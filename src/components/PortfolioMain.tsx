@@ -184,21 +184,28 @@ function mkLorenz(n: number): Float32Array {
 }
 
 // 3 — Cerveau suspendu + réseau neuronal animé (Compétences)
-// Nœuds du réseau (inner = sur cerveau, outer = dispersés)
+// BX=0.5, BY=0.0 → centre-droit de l'écran (texte à gauche, cerveau à droite)
+// Nœuds inner = ancrés sur le cortex, outer = constellation étendue mais dans l'écran
 const BRAIN_NODES: [number,number][] = [
-  [ 0.3, 2.55],[-0.8, 1.90],[ 1.4, 1.90], // 0-2 inner top
-  [-0.9, 1.20],[ 1.2, 1.20],[ 0.3, 0.55], // 3-5 inner mid/bot
-  [-3.5, 2.00],[-4.2, 0.40],[-3.0,-1.20], // 6-8 left chain
-  [-1.4,-2.50],[ 0.4,-2.80],[ 1.8,-2.30], // 9-11 bottom
-  [ 3.4,-0.90],[ 4.5, 0.60],[ 3.8, 2.10], // 12-14 right chain
+  // 0-4 : inner — surface du cerveau
+  [ 0.5,  0.9],[-0.2,  0.5],[ 1.2,  0.5], // 0-2 inner top
+  [-0.2, -0.4],[ 1.2, -0.4],              // 3-4 inner bas
+  // 5-13 : outer — constellation neuronale
+  [-1.4,  2.2],[ 0.5,  3.0],[ 2.8,  2.0], // 5-7 top arc
+  [ 3.8,  0.0],[ 2.8, -2.0],[ 0.5, -2.8], // 8-10 right/bot
+  [-1.4, -2.0],[-3.2,  0.0],[-2.0,  0.5], // 11-13 left arc
+  // 14 : ancre arc-seulement (pas de particule-nœud visible)
+  [ 0.5, -0.9],
 ];
-// Connexions [de, vers] — 19 arcs
+// Connexions [de, vers]
 const NEURAL_CONNS: [number,number][] = [
-  [0,1],[0,2],[1,3],[2,4],[3,4],[3,5],[4,5], // cerveau interne
-  [1,6],[6,7],[7,8],[8,9],                   // chaîne gauche
-  [5,9],[9,10],[10,11],[5,11],               // bas
-  [4,12],[12,13],[13,14],[2,14],             // chaîne droite
+  [0,1],[0,2],[1,3],[2,4],                               // cerveau interne
+  [1,5],[0,6],[2,7],[4,8],[3,13],[3,12],                  // cerveau → anneau
+  [5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,5],  // anneau extérieur
+  [12,13],[13,11],[1,6],[5,13],                           // diagonales
+  [3,14],[4,14],[14,10],                                  // inner bas reconnecté + ligne droite vers pointe basse
 ];
+
 
 function mkNeuralBrainWithArcT(n: number): [Float32Array, Float32Array] {
   const p    = new Float32Array(n * 3);
@@ -210,154 +217,162 @@ function mkNeuralBrainWithArcT(n: number): [Float32Array, Float32Array] {
   };
   const jit = (s:number) => (Math.random()-.5)*s;
 
-  const BX=0.3, BY=1.5, LR=0.55, R=1.20;
+  const BX = 0.5, BY = 0.0; // Centre-droit, verticalement centré
 
-  // ── Cerveau : rejection sampling → fissure réellement vide ───────
-  // Principe : on rejette toute particule qui tombe dans la zone de fissure.
-  // fissW = 0.06 (bas, lobes presque fusionnés) → 0.36 (haut, fissure bien visible ~18% largeur)
-  const brainN = Math.floor(n * 0.48);
-  let placed=0, tries=0;
-  while(placed<brainN && tries<brainN*12){
-    tries++;
-    const side=placed<brainN/2?-1:1;
-    const ph=Math.acos(2*Math.random()-1), th=Math.random()*Math.PI*2;
-    const isSurf=Math.random()<0.82;
-    const rBase=isSurf?(0.80+Math.random()*0.20)*R:Math.sqrt(Math.random())*R*0.65;
-    const bump=isSurf?1+0.18*Math.sin(5*th+ph)*Math.cos(1.5*ph)+0.09*Math.cos(7*th):1.0;
-    const r=rBase*bump;
-    const nx=r*Math.sin(ph)*Math.cos(th), ny=r*Math.sin(ph)*Math.sin(th), nz=r*Math.cos(ph);
-    const x=BX+side*LR+nx*0.88, y=BY+ny*0.82;
-    const normY=Math.max(0,(y-BY)/(R*0.82));
-    const fissW=0.06+normY*0.30;
-    if(Math.abs(x-BX)<fissW) continue;    // zone fissure → rejet
-    if((x-BX)*side<-0.20) continue;        // débord sur l'autre hémisphère → rejet
-    put(x,y,nz*0.50);
-    placed++;
+  // ── A : CORTEX 3D (80%) — ellipsoïde + gyri (budget récupéré des arcs supprimés) ──
+  const cortexN = Math.floor(n * 0.80);
+  for (let i = 0; i < cortexN; i++) {
+    const ph = Math.acos(2 * Math.random() - 1);
+    const th = Math.random() * Math.PI * 2;
+
+    // rx plus grand = plus épais/rond, rz réduit = moins allongé → plus esthétique
+    const rx = 1.30, ry = 1.00, rz = 1.80;
+    let x = Math.sin(ph) * Math.cos(th) * rx;
+    let y = Math.sin(ph) * Math.sin(th) * ry;
+    let z = Math.cos(ph) * rz;
+
+    // Ajustements anatomiques : creuse le bas-arrière (cervelet), rehausse le frontal
+    if (z > 0.5 && y < 0) y *= 0.58;
+    if (z < -0.3) y += 0.09;
+
+    // Gyri corticaux : amplitude augmentée → plis plus marqués → densité variable visible
+    const freq = 6.5;
+    const gyri = Math.sin(x * freq * 1.8) * Math.cos(y * freq) * Math.sin(z * freq * 0.8) * 0.115;
+
+    // Fissure interhémisphérique
+    const fissure = Math.abs(x) < 0.07 ? 0.80 : 1.0;
+
+    // 88% coque dense (surface nette), 12% volume résiduel pas trop profond
+    const depth = Math.random() < 0.88 ? 1.0 : 0.50 + Math.random() * 0.45;
+
+    put(
+      BX + (x + x * gyri) * depth * fissure,
+      BY + (y + y * gyri) * depth,
+      (z + z * gyri) * depth,
+      -0.5  // sentinelle cerveau (≠ -1 étoiles) pour boost shader section 3
+    );
   }
 
-  // ── Tronc cérébral ───────────────────────────────────────────────
-  const trunkN=Math.floor(n*0.03);
-  for (let i=0;i<trunkN;i++){const t=i/trunkN; put(BX+jit(0.18-t*0.06),BY-R-t*0.38,jit(0.10));}
+  // ── B : CERVELET (3%) — fusionné visuellement au cortex, pas de blob distinct ─
+  const cerebN = Math.floor(n * 0.03);
+  for (let i = 0; i < cerebN; i++) {
+    const ph = Math.acos(2 * Math.random() - 1);
+    const th = Math.random() * Math.PI * 2;
+    const r = (0.28 + Math.random() * 0.10) * Math.sqrt(Math.random());
+    const cGyri = Math.sin(ph * 16.0) * 0.018;
 
-  // ── Câbles vers le plafond ───────────────────────────────────────
-  const N_CAB=7, cabN=Math.floor(n*0.11);
-  for (let ci=0;ci<N_CAB;ci++){
-    const cx=BX-1.0+ci*0.34, bot=BY+R*0.82+Math.random()*0.22, sag=jit(0.11), pts=Math.floor(cabN/N_CAB);
-    for (let i=0;i<pts;i++){const t=Math.random(); put(cx+sag*Math.sin(t*Math.PI)+jit(0.016),bot+t*(4.5-bot),jit(0.032));}
+    put(
+      BX + Math.sin(ph) * Math.cos(th) * (r + cGyri) * 0.65,
+      BY - 0.50 + Math.sin(ph) * Math.sin(th) * (r + cGyri) * 0.60,
+      0.75 + Math.cos(ph) * (r + cGyri) * 0.45,
+      -0.5
+    );
   }
 
-  // ── Nœuds colorés (encodés aNeural = -2 - nodeId) ───────────────
-  BRAIN_NODES.forEach(([nx,ny],ni)=>{
-    for (let i=0;i<7&&idx<n;i++) put(nx+jit(0.11),ny+jit(0.09),jit(0.07),-2-ni);
+  // ── C : TRONC CÉRÉBRAL (2%) — sous le cervelet, peu de particules pour éviter le blob ─
+  const trunkN = Math.floor(n * 0.02);
+  for (let i = 0; i < trunkN; i++) {
+    const t = i / trunkN;
+    put(BX + jit(0.20), BY - 0.88 - t * 0.40, 0.80 + jit(0.14), -0.5); // bleu, démarré plus bas
+  }
+
+  // ── D : NŒUDS colorés (constellation) ────────────────────────────
+  BRAIN_NODES.forEach(([nx,ny],ni) => {
+    if (ni >= 14) return; // node 14 = ancre arc seulement, pas de particule visible
+    for (let i = 0; i < 7 && idx < n; i++)
+      put(nx + jit(0.11), ny + jit(0.09), jit(0.45), -2 - ni);
   });
 
-  // ── Connexions : arcs ordonnés → pulse smooth ───────────────────
-  const arcTotal=n-idx, perConn=Math.floor(arcTotal/NEURAL_CONNS.length);
-  NEURAL_CONNS.forEach(([ai,bi],ci)=>{
-    const [ax,ay]=BRAIN_NODES[ai],[bx,by]=BRAIN_NODES[bi];
-    const cx=(ax+bx)*0.5+jit(0.6), cy=(ay+by)*0.5+Math.abs(bx-ax)*0.18+jit(0.3);
-    for (let i=0;i<perConn&&idx<n;i++){
-      const t=i/(perConn-1); // séquentiel → pulse lisse
-      put(
-        (1-t)*(1-t)*ax+2*(1-t)*t*cx+t*t*bx+jit(0.030),
-        (1-t)*(1-t)*ay+2*(1-t)*t*cy+t*t*by+jit(0.030),
-        jit(0.065), ci+t*0.9999  // aNeural = connId + t
-      );
-    }
-  });
-
-  while(idx<n) put(BX+jit(1.2),BY+jit(0.7),jit(0.24));
+  // ── E : (arcs particules supprimés — remplacés par LineSegments géométriques) ──
+  while (idx < n) put(BX + jit(1.6), BY + jit(1.0), jit(0.35));
   return [p, arcT];
 }
 
 function mkNeuralBrain(n: number): Float32Array {
   const p = new Float32Array(n * 3);
   let idx = 0;
-  const put = (x:number, y:number, z:number) => { if(idx<n){p[idx*3]=x;p[idx*3+1]=y;p[idx*3+2]=z;idx++;} };
+  const put = (x:number, y:number, z:number) => { 
+    if(idx < n) { p[idx*3]=x; p[idx*3+1]=y; p[idx*3+2]=z; idx++; } 
+  };
   const jit = (s:number) => (Math.random()-.5)*s;
 
-  const BX = 0.3, BY = 1.5;
-  const LR = 0.42;  // lobes proches → un seul cerveau unifié
-  const R  = 1.15;
+  const BX = 0.3, BY = 1.3; // Centre d'affichage de la scène
 
-  // ── Cerveau : deux lobes fusionnés ──────────────────────────────
-  const brainN = Math.floor(n * 0.55);
-  for (let i = 0; i < brainN; i++) {
-    const side = i < brainN/2 ? -1 : 1;
-    const ph   = Math.acos(2*Math.random()-1), th = Math.random()*Math.PI*2;
-    const r    = Math.random() < 0.62
-      ? (0.78 + Math.random()*0.24) * R   // particules en surface (cortex)
-      : Math.sqrt(Math.random()) * R;       // remplissage intérieur
+  // A ── LE CORTEX (70% des points) : Ellipsoïde asymétrique + Plis corticaux
+  const cortexN = Math.floor(n * 0.70);
+  for (let i = 0; i < cortexN; i++) {
+    const ph = Math.acos(2 * Math.random() - 1);
+    const th = Math.random() * Math.PI * 2;
+
+    // Dimensions de base : allongé en X (profil), haut en Y, plus fin en Z (largeur)
+    let rx = 1.35;
+    let ry = 0.95;
+    let rz = 0.80;
+
+    let x = Math.sin(ph) * Math.cos(th) * rx;
+    let y = Math.sin(ph) * Math.sin(th) * ry;
+    let z = Math.cos(ph) * rz;
+
+    // Déformation anatomique de profil (Avant = -X, Arrière = +X)
+    if (x > 0 && y < 0) y *= 0.55; // On creuse le bas arrière pour laisser la place au cervelet
+    if (x < 0) y += 0.12;          // On rehausse légèrement le front (lobe frontal)
+
+    // L'EFFET CYBER-PLIS : Ondes de haute fréquence combinées sur les 3 axes
+    const freq = 6.5;
+    const gyri = Math.sin(x * freq) * Math.cos(y * freq) * Math.sin(z * freq) * 0.075;
+
+    // Fissure interhémisphérique (le sillon central qui sépare le cerveau en deux)
+    const fissure = Math.abs(z) < 0.06 ? 0.80 : 1.0;
+
+    // Distribution : 80% en surface (coque lumineuse), 20% en profondeur (volume)
+    const depth = Math.random() < 0.80 ? 1.0 : Math.random();
+
     put(
-      BX + side*LR + r*Math.sin(ph)*Math.cos(th)*0.90,
-      BY + r*Math.sin(ph)*Math.sin(th)*0.92,
-      r*Math.cos(ph)*0.46
+      BX + (x + x * gyri) * depth,
+      BY + (y + y * gyri) * depth,
+      (z + z * gyri) * depth * fissure
     );
   }
 
-  // ── Tronc cérébral court ─────────────────────────────────────────
-  const trunkN = Math.floor(n * 0.03);
+  // B ── LE CERVELET (15% des points) : La petite masse striée en bas à l'arrière (+X, -Y)
+  const cerebN = Math.floor(n * 0.15);
+  for (let i = 0; i < cerebN; i++) {
+    const ph = Math.acos(2 * Math.random() - 1);
+    const th = Math.random() * Math.PI * 2;
+    const r = (0.32 + Math.random() * 0.08) * Math.sqrt(Math.random());
+    
+    // Stries ultra-serrées typiques du cervelet
+    const cGyri = Math.sin(ph * 16.0) * 0.025;
+
+    put(
+      BX + 0.62 + Math.sin(ph) * Math.cos(th) * (r + cGyri),
+      BY - 0.50 + Math.sin(ph) * Math.sin(th) * (r + cGyri) * 0.65,
+      Math.cos(ph) * (r + cGyri) * 0.55
+    );
+  }
+
+  // C ── LE TRONC CÉRÉBRAL (5% des points) : Le câble biologique qui descend
+  const trunkN = Math.floor(n * 0.05);
   for (let i = 0; i < trunkN; i++) {
     const t = i / trunkN;
-    put(BX + jit(0.18 - t*0.06), BY - R - t*0.38, jit(0.10));
+    put(
+      BX + 0.12 + jit(0.12 - t * 0.04), 
+      BY - 0.45 - t * 0.85, 
+      jit(0.12)
+    );
   }
 
-  // ── Câbles vers le plafond ───────────────────────────────────────
-  const N_CABLES = 7;
-  const cableN   = Math.floor(n * 0.12);
-  for (let ci = 0; ci < N_CABLES; ci++) {
-    const cx  = BX - 1.0 + ci * 0.34;
-    const bot = BY + R * 0.82 + Math.random()*0.22;
-    const sag = jit(0.11);
-    const pts = Math.floor(cableN / N_CABLES);
-    for (let i = 0; i < pts; i++) {
-      const t    = Math.random();
-      const y    = bot + t * (4.5 - bot);
-      put(cx + sag * Math.sin(t*Math.PI) + jit(0.016), y, jit(0.032));
-    }
+  // D ── LA CONSTELLATION DE PROXIMITÉ (Le reste des points)
+  while (idx < n) {
+    const ph = Math.acos(2 * Math.random() - 1);
+    const th = Math.random() * Math.PI * 2;
+    const r = 1.35 + Math.random() * 1.10;
+    put(
+      BX + Math.sin(ph) * Math.cos(th) * r * 1.2,
+      BY + Math.sin(ph) * Math.sin(th) * r,
+      Math.cos(ph) * r * 0.75
+    );
   }
-
-  // ── Connexions neuronales dans toutes les directions ─────────────
-  // [tx, ty, lateral: 1=côté 0=bas] — pas de symétrie parfaite
-  const LANDS: [number,number,number][] = [
-    [-4.6,  0.4, 1], // gauche horizontal
-    [-3.5, -1.0, 1], // gauche diagonal
-    [-2.2, -2.6, 0], // bas-gauche
-    [-0.8, -3.0, 0], // bas
-    [ 0.5, -3.1, 0], // bas
-    [ 2.0, -2.5, 0], // bas-droite
-    [ 3.4, -1.2, 1], // droite diagonal
-    [ 4.5,  0.6, 1], // droite horizontal
-    [-3.8,  1.0, 1], // gauche haut
-    [ 4.0,  0.0, 1], // droite
-  ];
-  const arcTotal = n - idx;
-  const perArc   = Math.floor(arcTotal / LANDS.length);
-  LANDS.forEach(([tx, ty, lat]) => {
-    const side = tx < BX ? -1 : 1;
-    const sx   = BX + side * R * (0.4 + Math.random()*0.6) + jit(0.3);
-    const sy   = BY + jit(0.8);
-    // Arcs latéraux : arc court qui part côté ; arcs bas : monte d'abord
-    const ctrlX = lat > 0.5
-      ? sx + side*(1.2 + Math.random()*1.0) + jit(0.4)
-      : (sx + tx)*0.5 + jit(0.9);
-    const ctrlY = lat > 0.5
-      ? (sy + ty)*0.5 + 0.3 + Math.random()*0.6
-      : Math.max(sy, ty) + 0.8 + Math.random()*1.0;
-    for (let i = 0; i < perArc - 5; i++) {
-      const t = Math.random();
-      put(
-        (1-t)*(1-t)*sx + 2*(1-t)*t*ctrlX + t*t*tx + jit(0.04),
-        (1-t)*(1-t)*sy + 2*(1-t)*t*ctrlY + t*t*ty + jit(0.04),
-        jit(0.08)
-      );
-    }
-    for (let i = 0; i < 5 && idx < n; i++)
-      put(tx + jit(0.15), ty + jit(0.12), jit(0.06));
-  });
-
-  while (idx < n)
-    put(BX + jit(1.2), BY + jit(0.7), jit(0.24));
 
   return p;
 }
@@ -471,14 +486,20 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           pos.x += cos(uTime*0.038 + aRnd*6.283) * (0.4 + aRnd*0.5) * bg * rotAmt;
           pos.y += sin(uTime*0.031 + aRnd*5.127) * (0.3 + aRnd*0.4) * bg * rotAmt;
         }
-        // Section 3 — Cerveau : câbles se balancent, arcs pulsent
-        if (uSection >= 3.0 && uSection < 4.0 && uMorphT > 0.05) {
-          float cableAmt = smoothstep(2.5, 3.4, pos.y) * uMorphT;
-          pos.x += sin(uTime * 0.30 + aRnd * 6.28) * 0.07 * cableAmt;
-          // Pas de jitter sur les connexions (floue les lignes)
+        // Section 3 — Cerveau : rotation Y → profil de côté + respiration
+        // length(aTarget-position)>0.8 : uniquement les particules avec une vraie cible cerveau
+        // (shapeIdx → aTarget ≠ position ; fond diffus → aTarget = position → length≈0 → pas de rotation)
+        if (uSection >= 3.0 && uSection < 4.0 && uMorphT > 0.05 && length(aTarget - position) > 0.8) {
+          float rotAmt = smoothstep(0.15, 0.85, uMorphT);
+          float ry = 0.80 * rotAmt; // ~46° en Y → profil de côté bien visible
+          float pxr = pos.x * cos(ry) + pos.z * sin(ry);
+          pos.z = -pos.x * sin(ry) + pos.z * cos(ry);
+          pos.x = pxr;
+          // Respiration douce sur le corps du cerveau (pas les connexions)
           if (aNeural < 0.0) {
-            float arcPulse = (1.0 - smoothstep(1.0, 2.5, pos.y)) * smoothstep(-3.5, -1.0, pos.y);
-            pos += bDir * sin(uTime * 2.2 + aRnd * 6.28) * 0.022 * arcPulse * uMorphT;
+            float distC = length(pos.xy - vec2(0.5, 0.0));
+            float brainZone = (1.0 - smoothstep(1.2, 2.4, distC)) * uMorphT;
+            pos += bDir * sin(uTime * 1.8 + aRnd * 6.28) * 0.018 * brainZone;
           }
         }
         vec4 proj = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
@@ -492,8 +513,9 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
         gl_Position = projectionMatrix * mv;
         float base = aType < 0.5 ? 0.005 + aRnd*0.009 : 0.052 + aRnd*0.040;
         float isN3 = smoothstep(2.5,3.0,uSection)*(1.0-smoothstep(3.5,4.0,uSection));
-        if (isN3 > 0.01 && aNeural >= 0.0)   base = mix(base, 0.018+aRnd*0.010, isN3); // connexion : fin
-        if (isN3 > 0.01 && aNeural < -1.5)   base = mix(base, 0.095+aRnd*0.055, isN3); // nœud : gros
+        if (isN3 > 0.01 && aNeural >= 0.0)              base = mix(base, 0.016+aRnd*0.007, isN3); // arc : fin, le pulse fait l'effet
+        if (isN3 > 0.01 && aNeural < -1.5)              base = mix(base, 0.095+aRnd*0.055, isN3); // nœud : gros
+        if (isN3 > 0.01 && aNeural > -1.0 && aNeural < 0.0) base = mix(base, 0.075+aRnd*0.035, isN3); // cortex : visible
         gl_PointSize = (base + tEas*0.048 + push*0.08) * (220.0 / -mv.z);
       }
     `,
@@ -543,9 +565,15 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
               float speed  = 0.36 + mod(connId, 5.0)*0.06;
               float pPos   = fract(uTime*speed + connId*0.137);
               float dist   = min(abs(arcT-pPos), min(abs(arcT-pPos+1.0),abs(arcT-pPos-1.0)));
-              float pBright = exp(-dist*dist*55.0);
-              col   = mix(col, vec3(0.55,0.88,1.0), isN3*0.7);
-              alpha = mix(alpha, (alpha*0.08 + pBright*0.90)*vMorphed, isN3);
+              float pBright = exp(-dist*dist*18.0); // traîne lumineuse généreuse
+              float cm = mod(connId, 6.0);
+              vec3 connCol = cm<0.5 ? vec3(0.0,0.95,1.0) : cm<1.5 ? vec3(0.65,0.30,1.0)
+                           : cm<2.5 ? vec3(1.0,0.82,0.0) : cm<3.5 ? vec3(0.15,0.90,0.50)
+                           : cm<4.5 ? vec3(1.0,0.28,0.72) : vec3(0.35,0.88,1.0);
+              // Fil blanc très fin (câble de donnée), puis pulse coloré par-dessus
+              col   = mix(col, vec3(0.88, 0.94, 1.0), isN3 * 0.20);        // base blanche faint
+              col   = mix(col, connCol, isN3 * pBright * 0.95);              // éclat coloré
+              alpha = mix(alpha, (0.07 + pBright * 1.5) * vMorphed, isN3);
             }
             if (vNeural < -1.5) {
               // Nœud : couleur vive + pulsation
@@ -558,6 +586,11 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
               col   = mix(col, nc, isN3);
               alpha = mix(alpha, halo*np*(0.55+vMorphed*0.40), isN3);
             }
+            if (vNeural > -1.0 && vNeural < 0.0) {
+              // Cortex / cervelet / tronc : glow bleu-cyan dense
+              col   = mix(col, vec3(0.12, 0.60, 1.0), isN3 * 0.82);
+              alpha = mix(alpha, halo * pulse * (0.28 + vMorphed * 0.58), isN3);
+            }
           }
         }
         gl_FragColor = vec4(col, alpha);
@@ -565,6 +598,216 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     `,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }), []);
+
+  // ── BRAIN LINES : vraies lignes géométriques qui apparaissent une fois le cerveau formé ──
+  const brainLineMat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uSection: { value: 0 }, uMorphT: { value: 0 } },
+    vertexShader: `
+      attribute float aLineT;
+      attribute float aLineConn;
+      uniform float uSection;
+      uniform float uMorphT;
+      varying float vT;
+      varying float vConn;
+      void main() {
+        vec3 pos = position;
+        if (uSection >= 2.5 && uSection < 4.0) {
+          float rotAmt = smoothstep(0.15, 0.85, uMorphT);
+          float ry = 0.80 * rotAmt;
+          float px = pos.x * cos(ry) + pos.z * sin(ry);
+          pos.z    = -pos.x * sin(ry) + pos.z * cos(ry);
+          pos.x    = px;
+        }
+        vT    = aLineT;
+        vConn = aLineConn;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform float uSection;
+      uniform float uMorphT;
+      varying float vT;
+      varying float vConn;
+      void main() {
+        float isN3   = smoothstep(2.5, 3.0, uSection) * (1.0 - smoothstep(3.5, 4.0, uSection));
+        float visible = smoothstep(0.68, 0.92, uMorphT) * isN3;
+        if (visible < 0.001) discard;
+        float connId = vConn;
+        float speed  = 0.36 + mod(connId, 5.0) * 0.06;
+        float pPos   = fract(uTime * speed + connId * 0.137);
+        float dist   = min(abs(vT - pPos), min(abs(vT - pPos + 1.0), abs(vT - pPos - 1.0)));
+        float pulse  = exp(-dist * dist * 18.0);
+        float cm = mod(connId, 6.0);
+        vec3 connCol = cm < 0.5 ? vec3(0.0,0.95,1.0)  : cm < 1.5 ? vec3(0.65,0.30,1.0)
+                     : cm < 2.5 ? vec3(1.0,0.82,0.0)  : cm < 3.5 ? vec3(0.15,0.90,0.50)
+                     : cm < 4.5 ? vec3(1.0,0.28,0.72) : vec3(0.35,0.88,1.0);
+        vec3 col   = mix(vec3(0.60, 0.82, 1.0), connCol, pulse * 0.90);
+        float alpha = (0.22 + pulse * 1.10) * visible;
+        gl_FragColor = vec4(col, alpha);
+      }
+    `,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }), []);
+
+  const brainLineGeo = useMemo(() => {
+    const SEGS = 40;
+    const totalVerts = NEURAL_CONNS.length * SEGS * 2;
+    const pos     = new Float32Array(totalVerts * 3);
+    const aLineT  = new Float32Array(totalVerts);
+    const aLineConn = new Float32Array(totalVerts);
+    NEURAL_CONNS.forEach(([ai, bi], ci) => {
+      const [ax, ay] = BRAIN_NODES[ai];
+      const [bx, by] = BRAIN_NODES[bi];
+      for (let s = 0; s < SEGS; s++) {
+        const t0 = s / SEGS, t1 = (s + 1) / SEGS;
+        const vi = (ci * SEGS + s) * 2;
+        pos[vi*3]       = ax + (bx - ax) * t0;
+        pos[vi*3+1]     = ay + (by - ay) * t0;
+        pos[vi*3+2]     = 0;
+        pos[(vi+1)*3]   = ax + (bx - ax) * t1;
+        pos[(vi+1)*3+1] = ay + (by - ay) * t1;
+        pos[(vi+1)*3+2] = 0;
+        aLineT[vi] = t0; aLineT[vi+1] = t1;
+        aLineConn[vi] = ci; aLineConn[vi+1] = ci;
+      }
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aLineT',   new THREE.BufferAttribute(aLineT, 1));
+    geo.setAttribute('aLineConn',new THREE.BufferAttribute(aLineConn, 1));
+    return geo;
+  }, []);
+
+  // ── RÉSEAU INTERNE DU CERVEAU (lignes 3D dans l'ellipsoïde) ──────
+  const brainInternalLineMat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uSection: { value: 0 }, uMorphT: { value: 0 } },
+    vertexShader: `
+      attribute float aLineT;
+      uniform float uSection; uniform float uMorphT;
+      varying float vT;
+      void main() {
+        vec3 pos = position;
+        if (uSection >= 2.5 && uSection < 4.0) {
+          float rotAmt = smoothstep(0.15, 0.85, uMorphT);
+          float ry = 0.80 * rotAmt;
+          float px = pos.x * cos(ry) + pos.z * sin(ry);
+          pos.z    = -pos.x * sin(ry) + pos.z * cos(ry);
+          pos.x    = px;
+        }
+        vT = aLineT;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime; uniform float uSection; uniform float uMorphT;
+      void main() {
+        float isN3   = smoothstep(2.5,3.0,uSection)*(1.0-smoothstep(3.5,4.0,uSection));
+        float visible = smoothstep(0.68,0.92,uMorphT)*isN3;
+        if (visible < 0.001) discard;
+        float breathe = 0.80 + 0.20*sin(uTime*0.7);
+        gl_FragColor = vec4(0.38, 0.70, 1.0, 0.22*breathe*visible);
+      }
+    `,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }), []);
+
+  // Grille lat/lon sur l'ellipsoïde du cerveau — donne les contours naturels des gyri
+  const brainInternalLineGeo = useMemo(() => {
+    const BX = 0.5, BY = 0.0;
+    const rx = 1.30, ry = 1.00, rz = 1.80;
+    const verts: number[] = [];
+    const HSEGS = 64; // segments par anneau horizontal
+    const VSEGS = 32; // segments par méridien vertical
+
+    // Anneaux de latitude (gyri) : ph fixe, th varie
+    for (const ph of [0.30, 0.55, 0.80, 1.05, 1.30, 1.57, 1.82, 2.07, 2.35, 2.65]) {
+      const sinPh = Math.sin(ph), cosPhY = Math.cos(ph);
+      const y = BY + ry * cosPhY;
+      for (let i = 0; i < HSEGS; i++) {
+        const th0 = (2*Math.PI*i)/HSEGS, th1 = (2*Math.PI*(i+1))/HSEGS;
+        verts.push(
+          BX + rx*sinPh*Math.cos(th0), y, rz*sinPh*Math.sin(th0),
+          BX + rx*sinPh*Math.cos(th1), y, rz*sinPh*Math.sin(th1),
+        );
+      }
+    }
+    // Méridiens (sulci) : th fixe, ph varie de 0 à π
+    for (let j = 0; j < 10; j++) {
+      const th = (2*Math.PI*j)/10;
+      const cosT = Math.cos(th), sinT = Math.sin(th);
+      for (let i = 0; i < VSEGS; i++) {
+        const ph0 = (Math.PI*i)/VSEGS, ph1 = (Math.PI*(i+1))/VSEGS;
+        verts.push(
+          BX + rx*Math.sin(ph0)*cosT, BY + ry*Math.cos(ph0), rz*Math.sin(ph0)*sinT,
+          BX + rx*Math.sin(ph1)*cosT, BY + ry*Math.cos(ph1), rz*Math.sin(ph1)*sinT,
+        );
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3));
+    return geo;
+  }, []);
+
+  // ── ÉTOILES AUX NŒUDS (outer constellation + internes) ──────────
+  const brainNodeDotsMat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uSection: { value: 0 }, uMorphT: { value: 0 } },
+    vertexShader: `
+      attribute float aNodeId;
+      uniform float uSection; uniform float uMorphT; uniform float uTime;
+      varying float vNodeId;
+      void main() {
+        vec3 pos = position;
+        if (uSection >= 2.5 && uSection < 4.0) {
+          float rotAmt = smoothstep(0.15, 0.85, uMorphT);
+          float ry = 0.80 * rotAmt;
+          float px = pos.x * cos(ry) + pos.z * sin(ry);
+          pos.z    = -pos.x * sin(ry) + pos.z * cos(ry);
+          pos.x    = px;
+        }
+        vNodeId = aNodeId;
+        float isN3   = smoothstep(2.5,3.0,uSection)*(1.0-smoothstep(3.5,4.0,uSection));
+        float visible = smoothstep(0.68,0.92,uMorphT)*isN3;
+        gl_PointSize = 6.0 * visible;
+        gl_Position  = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime; uniform float uSection; uniform float uMorphT;
+      varying float vNodeId;
+      void main() {
+        float isN3   = smoothstep(2.5,3.0,uSection)*(1.0-smoothstep(3.5,4.0,uSection));
+        float visible = smoothstep(0.68,0.92,uMorphT)*isN3;
+        if (visible < 0.001) discard;
+        vec2 c = gl_PointCoord - 0.5;
+        float d = length(c);
+        if (d > 0.5) discard;
+        float core = 1.0 - smoothstep(0.0, 0.22, d);
+        float halo = 1.0 - smoothstep(0.22, 0.50, d);
+        float pulse = 0.70 + 0.30 * sin(uTime*2.2 + vNodeId*1.618);
+        float cm = mod(vNodeId, 6.0);
+        vec3 col = cm<0.5 ? vec3(0.0,0.95,1.0) : cm<1.5 ? vec3(0.65,0.30,1.0)
+                 : cm<2.5 ? vec3(1.0,0.82,0.0)  : cm<3.5 ? vec3(0.15,0.90,0.50)
+                 : cm<4.5 ? vec3(1.0,0.28,0.72)  : vec3(0.35,0.88,1.0);
+        col = mix(col, vec3(1.0), core * 0.6);
+        gl_FragColor = vec4(col, (core*0.95+halo*0.45)*pulse*visible);
+      }
+    `,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }), []);
+
+  const brainNodeDotsGeo = useMemo(() => {
+    const all: [number,number,number,number][] = [
+      ...BRAIN_NODES.map(([x,y],i) => [x,y,0,i] as [number,number,number,number]),
+    ];
+    const pos = new Float32Array(all.length * 3);
+    const aNodeId = new Float32Array(all.length);
+    all.forEach(([x,y,z,id],i) => { pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z; aNodeId[i]=id; });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aNodeId',  new THREE.BufferAttribute(aNodeId, 1));
+    return geo;
+  }, []);
 
   const { positions, types, rnds, allTargets, shapeIdx, gpuBuf, gearIds, neuralBuf } = useMemo(() => {
     const N       = 100_000;
@@ -666,20 +909,34 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     mat.uniforms.uSection.value = section + sp;
     mat.uniforms.uMorphT.value  = morphT;
     mat.uniforms.uForming.value = forming;
+    brainLineMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
+    brainLineMat.uniforms.uSection.value = mat.uniforms.uSection.value;
+    brainLineMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
+    brainInternalLineMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
+    brainInternalLineMat.uniforms.uSection.value = mat.uniforms.uSection.value;
+    brainInternalLineMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
+    brainNodeDotsMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
+    brainNodeDotsMat.uniforms.uSection.value = mat.uniforms.uSection.value;
+    brainNodeDotsMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
   });
 
   return (
-    <points>
-      <bufferGeometry ref={geoRef}>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-aType"    args={[types,     1]} />
-        <bufferAttribute attach="attributes-aRnd"     args={[rnds,      1]} />
-        <bufferAttribute attach="attributes-aGear"    args={[gearIds,   1]} />
-        <bufferAttribute attach="attributes-aNeural"  args={[neuralBuf, 1]} />
-        <bufferAttribute attach="attributes-aTarget"  args={[gpuBuf,    3]} />
-      </bufferGeometry>
-      <primitive object={mat} />
-    </points>
+    <>
+      <points>
+        <bufferGeometry ref={geoRef}>
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+          <bufferAttribute attach="attributes-aType"    args={[types,     1]} />
+          <bufferAttribute attach="attributes-aRnd"     args={[rnds,      1]} />
+          <bufferAttribute attach="attributes-aGear"    args={[gearIds,   1]} />
+          <bufferAttribute attach="attributes-aNeural"  args={[neuralBuf, 1]} />
+          <bufferAttribute attach="attributes-aTarget"  args={[gpuBuf,    3]} />
+        </bufferGeometry>
+        <primitive object={mat} />
+      </points>
+      <lineSegments args={[brainLineGeo, brainLineMat]} />
+      <lineSegments args={[brainInternalLineGeo, brainInternalLineMat]} />
+      <points args={[brainNodeDotsGeo, brainNodeDotsMat]} />
+    </>
   );
 }
 
@@ -806,26 +1063,116 @@ const PANELS = [PAbout, PCompany, PChaos, PSkills, PExperience, PSchool, PContac
 function DetailPanel({ secIdx, open, onClose }: { secIdx:number; open:boolean; onClose:()=>void }) {
   const s = SECTIONS[secIdx];
   const PC = PANELS[secIdx];
+  
+  // Couleurs dynamiques selon la section pour une harmonie parfaite
+  const colors = [
+    'rgba(0,185,255,0.85)',  // Cyan about
+    'rgba(0,140,255,0.85)',  // Bleu company
+    'rgba(140,60,255,0.85)',  // Violet chaos
+    'rgba(255,50,80,0.85)',   // Rouge skills
+    'rgba(255,110,40,0.85)',  // Orange exp
+    'rgba(0,200,180,0.85)',   // Teal school
+    '#ddeeff'                 // Blanc contact
+  ];
+  const activeColor = colors[secIdx] || 'rgba(0,185,255,0.85)';
+
   return (
     <>
-      {open && <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,0,0,0.22)' }} />}
+      {/* Overlay de fond assombri */}
+      {open && (
+        <div 
+          onClick={onClose} 
+          style={{ 
+            position:'fixed', inset:0, zIndex:40, 
+            background:'rgba(0,1,5,0.45)', backdropFilter:'blur(4px)',
+            transition: 'opacity 0.4s ease'
+          }} 
+        />
+      )}
+      
+      {/* Le Panneau Glissant */}
       <div style={{
         position:'fixed', top:0, right:0, height:'100vh',
-        width:'min(48vw,660px)',
-        background:'rgba(0,3,14,0.97)', backdropFilter:'blur(22px)',
-        borderLeft:'1px solid rgba(0,140,255,0.15)',
+        width:'min(52vw,680px)',
+        
+        // Esthétique Cyber : Fond ultra sombre + Scanlines subtiles en CSS
+        background:`
+          linear-gradient(rgba(0, 4, 16, 0.96), rgba(0, 4, 16, 0.96)),
+          linear-gradient(rgba(0,185,255,0.03) 50%, rgba(0,0,0,0) 50%)
+        `,
+        backgroundSize: '100% 100%, 100% 4px', // Crée l'effet lignes CRT de terminal
+        backdropFilter:'blur(24px)',
+        
+        // Bordure gauche lumineuse et réactive à la section
+        borderLeft:`2px solid ${activeColor}`,
+        boxShadow: open ? `-15px 0 45px rgba(0, 8, 32, 0.85), inset 1px 0 10px ${activeColor}22` : 'none',
+        
         transform: open ? 'translateX(0)' : 'translateX(100%)',
-        transition:'transform 0.52s cubic-bezier(0.16,1,0.3,1)',
+        transition:'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1)',
         zIndex:50, overflowY:'auto',
-        padding:'4.5rem 2.5rem 3rem',
+        padding:'5.5rem 3rem 4rem',
       }}>
-        <button onClick={onClose} style={{ position:'absolute', top:20, right:20, background:'none', border:'1px solid rgba(0,140,255,0.18)', color:'rgba(0,185,255,0.6)', ...mono, fontSize:'0.6rem', letterSpacing:'0.35em', padding:'5px 12px', cursor:'pointer' }}>
-          ✕ FERMER
+        
+        {/* Intégration des cornières HUD à l'intérieur du panneau pour habiller les angles */}
+        <div style={{ position:'absolute', top:25, left:25, width:14, height:14, borderTop:`1px solid ${activeColor}44`, borderLeft:`1px solid ${activeColor}44` }} />
+        <div style={{ position:'absolute', bottom:25, left:25, width:14, height:14, borderBottom:`1px solid ${activeColor}44`, borderLeft:`1px solid ${activeColor}44` }} />
+        <div style={{ position:'absolute', bottom:25, right:25, width:14, height:14, borderBottom:`1px solid ${activeColor}44`, borderRight:`1px solid ${activeColor}44` }} />
+
+        {/* Bouton Fermer façon Terminal d'urgence */}
+        <button 
+          onClick={onClose} 
+          style={{ 
+            position: 'absolute', 
+            top: 25, 
+            right: '3rem',
+            background: 'rgba(0,12,32,0.6)', 
+            border: `1px solid ${activeColor}44`, 
+            color: activeColor, 
+            ...mono, 
+            fontSize: '0.58rem', 
+            letterSpacing: '0.35em', 
+            padding: '6px 14px', 
+            cursor: 'pointer', 
+            transition: 'all 0.2s ease-in-out',
+            boxShadow: `0 0 10px ${activeColor}11`
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(255,30,60,0.15)';
+            e.currentTarget.style.borderColor = 'rgba(255,50,80,0.85)';
+            e.currentTarget.style.color = '#ff3250';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(0,12,32,0.6)';
+            e.currentTarget.style.borderColor = `${activeColor}44`;
+            e.currentTarget.style.color = activeColor;
+          }}
+        >
+          ⏱ ABORT_SESSION // ✕
         </button>
-        <p style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.7em', color:'rgba(0,185,255,0.32)', marginBottom:'0.5rem', textTransform:'uppercase' }}>{s.num} ——</p>
-        <h2 style={{ fontSize:'clamp(1.4rem,2.8vw,2rem)', fontWeight:700, color:'#ddeeff', marginBottom:'0.45rem', lineHeight:1.1 }}>{s.title}</h2>
-        <p style={{ ...mono, fontSize:'0.65rem', color:'rgba(0,185,255,0.42)', letterSpacing:'0.35em', marginBottom:'2rem', textTransform:'uppercase' }}>{s.tagline}</p>
-        <div style={{ borderTop:'1px solid rgba(0,140,255,0.1)', paddingTop:'1.75rem' }}>
+
+        {/* En-tête de section style data-stream */}
+        <p style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.7em', color:`${activeColor}66`, marginBottom:'0.6rem', textTransform:'uppercase' }}>
+          DATA_STREAM // {s.num} ——
+        </p>
+        
+        <h2 style={{ 
+          fontSize:'clamp(1.6rem, 3vw, 2.4rem)', fontWeight:700, color:'#ddeeff', 
+          marginBottom:'0.5rem', lineHeight:1.1, letterSpacing: '-0.02em',
+          textShadow: `0 0 30px ${activeColor}44`
+        }}>
+          {s.title}
+        </h2>
+        
+        <p style={{ ...mono, fontSize:'0.65rem', color:'rgba(0,185,255,0.45)', letterSpacing:'0.35em', marginBottom:'2.5rem', textTransform:'uppercase' }}>
+          {s.tagline}
+        </p>
+        
+        {/* Zone de contenu principale */}
+        <div style={{ 
+          borderTop:`1px dashed ${activeColor}22`, 
+          paddingTop:'2rem',
+          position: 'relative'
+        }}>
           <PC />
         </div>
       </div>
