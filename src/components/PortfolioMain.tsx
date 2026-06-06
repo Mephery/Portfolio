@@ -183,9 +183,10 @@ function mkLorenz(n: number): Float32Array {
   return p;
 }
 
-// 3 — Cerveau suspendu + réseau neuronal animé (Compétences)
-// BX=0.5, BY=0.0 → centre-droit de l'écran (texte à gauche, cerveau à droite)
-// Nœuds inner = ancrés sur le cortex, outer = constellation étendue mais dans l'écran
+// 3 — Atome (Compétences) — cerveau conservé ci-dessous en commentaire
+// BX=0.5, BY=0.0 → centre-droit de l'écran
+
+// Anciens nœuds neuraux (conservés pour référence, non utilisés)
 const BRAIN_NODES: [number,number][] = [
   // 0-4 : inner — surface du cerveau
   [ 0.5,  0.9],[-0.2,  0.5],[ 1.2,  0.5], // 0-2 inner top
@@ -207,197 +208,258 @@ const NEURAL_CONNS: [number,number][] = [
 ];
 
 
-function mkNeuralBrainWithArcT(n: number): [Float32Array, Float32Array] {
+// Atome : noyau + 3 ellipses orbitales à 0°, 60°, 120° dans le plan écran
+// Formule correcte : anneau de base dans XY incliné α=60° sur Z, puis rotation φ dans l'écran
+// → vue de face = 3 ellipses à 60° (logo atomique classique) ; en rotation Y = gyroscope 3D
+function mkAtomWithArcT(n: number): [Float32Array, Float32Array] {
   const p    = new Float32Array(n * 3);
   const arcT = new Float32Array(n).fill(-1);
   let idx = 0;
-  const put = (x:number, y:number, z:number, at=-1) => {
+  const put = (x: number, y: number, z: number, at = -1) => {
     if (idx >= n) return;
     p[idx*3]=x; p[idx*3+1]=y; p[idx*3+2]=z; arcT[idx]=at; idx++;
   };
-  const jit = (s:number) => (Math.random()-.5)*s;
+  const jit = (s: number) => (Math.random()-.5)*s;
 
-  const BX = 0.5, BY = 0.0; // Centre-droit, verticalement centré
+  const BX = 0.5, BY = 0.0;
+  const R  = 1.70;
+  const CA = 0.5, SA = 0.866; // cos/sin(60°) — aplatissement de l'ellipse
 
-  // ── A : CORTEX 3D (80%) — ellipsoïde + gyri (budget récupéré des arcs supprimés) ──
-  const cortexN = Math.floor(n * 0.80);
-  for (let i = 0; i < cortexN; i++) {
-    const ph = Math.acos(2 * Math.random() - 1);
+  // A — Noyau (15%) : sphère dense, aNeural=-2 → grosse taille dans le shader
+  const nucleusN = Math.floor(n * 0.15);
+  for (let i = 0; i < nucleusN; i++) {
+    const ph = Math.acos(2*Math.random()-1);
     const th = Math.random() * Math.PI * 2;
-
-    // rx plus grand = plus épais/rond, rz réduit = moins allongé → plus esthétique
-    const rx = 1.30, ry = 1.00, rz = 1.80;
-    let x = Math.sin(ph) * Math.cos(th) * rx;
-    let y = Math.sin(ph) * Math.sin(th) * ry;
-    let z = Math.cos(ph) * rz;
-
-    // Ajustements anatomiques : creuse le bas-arrière (cervelet), rehausse le frontal
-    if (z > 0.5 && y < 0) y *= 0.58;
-    if (z < -0.3) y += 0.09;
-
-    // Gyri corticaux : amplitude augmentée → plis plus marqués → densité variable visible
-    const freq = 6.5;
-    const gyri = Math.sin(x * freq * 1.8) * Math.cos(y * freq) * Math.sin(z * freq * 0.8) * 0.115;
-
-    // Fissure interhémisphérique
-    const fissure = Math.abs(x) < 0.07 ? 0.80 : 1.0;
-
-    // 88% coque dense (surface nette), 12% volume résiduel pas trop profond
-    const depth = Math.random() < 0.88 ? 1.0 : 0.50 + Math.random() * 0.45;
-
-    put(
-      BX + (x + x * gyri) * depth * fissure,
-      BY + (y + y * gyri) * depth,
-      (z + z * gyri) * depth,
-      -0.5  // sentinelle cerveau (≠ -1 étoiles) pour boost shader section 3
-    );
+    const r  = Math.random() * 0.22;
+    put(BX + r*Math.sin(ph)*Math.cos(th),
+        BY + r*Math.sin(ph)*Math.sin(th),
+        r*Math.cos(ph), -2.0);
   }
 
-  // ── B : CERVELET (3%) — fusionné visuellement au cortex, pas de blob distinct ─
-  const cerebN = Math.floor(n * 0.03);
-  for (let i = 0; i < cerebN; i++) {
-    const ph = Math.acos(2 * Math.random() - 1);
+  // B — 3 anneaux orbitaux (20% chacun = 60%) — z=0 : ellipses plates dans le plan écran
+  // La rotation Z (vue de face) rend la profondeur inutile et source de distorsion perspective
+  const ringN = Math.floor(n * 0.20);
+  for (const phi of [0, Math.PI/3, 2*Math.PI/3]) {
+    const cP = Math.cos(phi), sP = Math.sin(phi);
+    for (let i = 0; i < ringN; i++) {
+      const t = (i / ringN) * Math.PI * 2;
+      const ct = Math.cos(t), st = Math.sin(t);
+      put(BX + R*(ct*cP - CA*st*sP) + jit(0.025),
+          BY + R*(ct*sP + CA*st*cP) + jit(0.025),
+          jit(0.025), -0.5);
+    }
+  }
+
+  // C — Nuage quantique (25%) : halos dispersés autour
+  while (idx < n) {
+    const ph = Math.acos(2*Math.random()-1);
     const th = Math.random() * Math.PI * 2;
-    const r = (0.28 + Math.random() * 0.10) * Math.sqrt(Math.random());
-    const cGyri = Math.sin(ph * 16.0) * 0.018;
-
-    put(
-      BX + Math.sin(ph) * Math.cos(th) * (r + cGyri) * 0.65,
-      BY - 0.50 + Math.sin(ph) * Math.sin(th) * (r + cGyri) * 0.60,
-      0.75 + Math.cos(ph) * (r + cGyri) * 0.45,
-      -0.5
-    );
+    const r  = 1.5 + Math.random() * 0.9;
+    put(BX + Math.sin(ph)*Math.cos(th)*r,
+        BY + Math.sin(ph)*Math.sin(th)*r*0.85,
+        Math.cos(ph)*r*0.65);
   }
 
-  // ── C : TRONC CÉRÉBRAL (2%) — sous le cervelet, peu de particules pour éviter le blob ─
-  const trunkN = Math.floor(n * 0.02);
-  for (let i = 0; i < trunkN; i++) {
-    const t = i / trunkN;
-    put(BX + jit(0.20), BY - 0.88 - t * 0.40, 0.80 + jit(0.14), -0.5); // bleu, démarré plus bas
-  }
-
-  // ── D : NŒUDS colorés (constellation) ────────────────────────────
-  BRAIN_NODES.forEach(([nx,ny],ni) => {
-    if (ni >= 14) return; // node 14 = ancre arc seulement, pas de particule visible
-    for (let i = 0; i < 7 && idx < n; i++)
-      put(nx + jit(0.11), ny + jit(0.09), jit(0.45), -2 - ni);
-  });
-
-  // ── E : (arcs particules supprimés — remplacés par LineSegments géométriques) ──
-  while (idx < n) put(BX + jit(1.6), BY + jit(1.0), jit(0.35));
   return [p, arcT];
 }
 
-function mkNeuralBrain(n: number): Float32Array {
-  const p = new Float32Array(n * 3);
-  let idx = 0;
-  const put = (x:number, y:number, z:number) => { 
-    if(idx < n) { p[idx*3]=x; p[idx*3+1]=y; p[idx*3+2]=z; idx++; } 
-  };
-  const jit = (s:number) => (Math.random()-.5)*s;
-
-  const BX = 0.3, BY = 1.3; // Centre d'affichage de la scène
-
-  // A ── LE CORTEX (70% des points) : Ellipsoïde asymétrique + Plis corticaux
-  const cortexN = Math.floor(n * 0.70);
-  for (let i = 0; i < cortexN; i++) {
-    const ph = Math.acos(2 * Math.random() - 1);
-    const th = Math.random() * Math.PI * 2;
-
-    // Dimensions de base : allongé en X (profil), haut en Y, plus fin en Z (largeur)
-    let rx = 1.35;
-    let ry = 0.95;
-    let rz = 0.80;
-
-    let x = Math.sin(ph) * Math.cos(th) * rx;
-    let y = Math.sin(ph) * Math.sin(th) * ry;
-    let z = Math.cos(ph) * rz;
-
-    // Déformation anatomique de profil (Avant = -X, Arrière = +X)
-    if (x > 0 && y < 0) y *= 0.55; // On creuse le bas arrière pour laisser la place au cervelet
-    if (x < 0) y += 0.12;          // On rehausse légèrement le front (lobe frontal)
-
-    // L'EFFET CYBER-PLIS : Ondes de haute fréquence combinées sur les 3 axes
-    const freq = 6.5;
-    const gyri = Math.sin(x * freq) * Math.cos(y * freq) * Math.sin(z * freq) * 0.075;
-
-    // Fissure interhémisphérique (le sillon central qui sépare le cerveau en deux)
-    const fissure = Math.abs(z) < 0.06 ? 0.80 : 1.0;
-
-    // Distribution : 80% en surface (coque lumineuse), 20% en profondeur (volume)
-    const depth = Math.random() < 0.80 ? 1.0 : Math.random();
-
-    put(
-      BX + (x + x * gyri) * depth,
-      BY + (y + y * gyri) * depth,
-      (z + z * gyri) * depth * fissure
-    );
-  }
-
-  // B ── LE CERVELET (15% des points) : La petite masse striée en bas à l'arrière (+X, -Y)
-  const cerebN = Math.floor(n * 0.15);
-  for (let i = 0; i < cerebN; i++) {
-    const ph = Math.acos(2 * Math.random() - 1);
-    const th = Math.random() * Math.PI * 2;
-    const r = (0.32 + Math.random() * 0.08) * Math.sqrt(Math.random());
-    
-    // Stries ultra-serrées typiques du cervelet
-    const cGyri = Math.sin(ph * 16.0) * 0.025;
-
-    put(
-      BX + 0.62 + Math.sin(ph) * Math.cos(th) * (r + cGyri),
-      BY - 0.50 + Math.sin(ph) * Math.sin(th) * (r + cGyri) * 0.65,
-      Math.cos(ph) * (r + cGyri) * 0.55
-    );
-  }
-
-  // C ── LE TRONC CÉRÉBRAL (5% des points) : Le câble biologique qui descend
-  const trunkN = Math.floor(n * 0.05);
-  for (let i = 0; i < trunkN; i++) {
-    const t = i / trunkN;
-    put(
-      BX + 0.12 + jit(0.12 - t * 0.04), 
-      BY - 0.45 - t * 0.85, 
-      jit(0.12)
-    );
-  }
-
-  // D ── LA CONSTELLATION DE PROXIMITÉ (Le reste des points)
-  while (idx < n) {
-    const ph = Math.acos(2 * Math.random() - 1);
-    const th = Math.random() * Math.PI * 2;
-    const r = 1.35 + Math.random() * 1.10;
-    put(
-      BX + Math.sin(ph) * Math.cos(th) * r * 1.2,
-      BY + Math.sin(ph) * Math.sin(th) * r,
-      Math.cos(ph) * r * 0.75
-    );
-  }
-
+function mkAtom(n: number): Float32Array {
+  const [p] = mkAtomWithArcT(n);
   return p;
 }
 
-// 4 — Double hélice (Expérience / ADN du parcours)
+// 4 — Double hélice ADN — hélice ELLIPTIQUE (xa >> zb) vue de face = deux vagues, pas un tube
+// Layout : [Brin A : strandN] [Brin B : strandN] [Barreaux : DNA_N_RUNGS * DNA_RUNG_PTS]
+const DNA_N_RUNGS  = 22;
+const DNA_RUNG_PTS = 90;  // 22 * 90 = 1980
+
 function mkHelix(n: number): Float32Array {
-  const p = new Float32Array(n*3);
-  for (let i=0;i<n;i++){
-    const t=(i/n)*Math.PI*10, strand=i%2, phase=strand*Math.PI;
-    p[i*3]=Math.cos(t+phase)*2.2; p[i*3+1]=t*0.25-3.9; p[i*3+2]=Math.sin(t+phase)*0.9;
+  const p = new Float32Array(n * 3);
+  const turns  = 1.5;   // 1.5 tours seulement — hélice très étirée qui déborde hors-cadre
+  const xa     = 2.5;   // amplitude X
+  const zb     = 0.45;  // amplitude Z (profondeur)
+  const yBase  = -6.0, height = 12.0; // grande hauteur : les extrémités sortent de l'écran
+  const rungTotal = DNA_N_RUNGS * DNA_RUNG_PTS;        // 1980
+  const strandN   = Math.floor((n - rungTotal) / 2);   // ~3510 par brin
+  // Tilt diagonal : axe hélice incliné à -0.5 rad autour de Z (bas-gauche → haut-droite)
+  const ct = Math.cos(-0.5), st = Math.sin(-0.5);
+  let idx = 0;
+  const put = (lx: number, ly: number, lz: number) => {
+    p[idx*3] = lx*ct - ly*st; p[idx*3+1] = lx*st + ly*ct; p[idx*3+2] = lz; idx++;
+  };
+  // Brin A
+  for (let i = 0; i < strandN; i++) {
+    const t = (i / strandN) * Math.PI * 2 * turns;
+    put(xa * Math.cos(t), yBase + (i / strandN) * height, zb * Math.sin(t));
   }
+  // Brin B — déphasé de π (côté opposé sur l'ellipse)
+  for (let i = 0; i < strandN; i++) {
+    const t = (i / strandN) * Math.PI * 2 * turns + Math.PI;
+    put(xa * Math.cos(t), yBase + (i / strandN) * height, zb * Math.sin(t));
+  }
+  // Barreaux : de brin A vers brin B à même hauteur (le long du petit axe elliptique)
+  for (let r = 0; r < DNA_N_RUNGS; r++) {
+    const frac = (r + 0.5) / DNA_N_RUNGS;
+    const t    = frac * Math.PI * 2 * turns;
+    const y    = yBase + frac * height;
+    const ax   = xa * Math.cos(t), az = zb * Math.sin(t); // point brin A
+    // brin B = (cos(t+π), sin(t+π)) = (-ax/xa*xa, -az/zb*zb) = (-ax, -az)
+    for (let j = 0; j < DNA_RUNG_PTS && idx < n; j++) {
+      const lT = (j + 0.5) / DNA_RUNG_PTS;
+      put(ax * (1 - 2*lT), y, az * (1 - 2*lT));
+    }
+  }
+  while (idx < n) { p[idx*3]=p[(idx-1)*3]; p[idx*3+1]=p[(idx-1)*3+1]; p[idx*3+2]=p[(idx-1)*3+2]; idx++; }
   return p;
 }
 
-// 5 — Nœud torique trefoil (BTS — complexité apprise)
-function mkTorusKnot(n: number): Float32Array {
-  const p = new Float32Array(n*3);
-  for (let i=0;i<n;i++){
-    const t=(i/n)*Math.PI*2, pq=3, qq=2, r1=2.0, r2=0.75;
-    p[i*3]=(r1+r2*Math.cos(qq*t))*Math.cos(pq*t); p[i*3+1]=(r1+r2*Math.cos(qq*t))*Math.sin(pq*t); p[i*3+2]=r2*Math.sin(qq*t)*0.8;
+// 5 — Ampoule à incandescence (BTS — icône de l'apprentissage)
+// strand: 0=enveloppe de verre, 1=filament hélicoïdal, 2=halo intérieur, -1=culot métallique
+function mkTorusKnotWithStrand(n: number): [Float32Array, Float32Array] {
+  const p = new Float32Array(n * 3);
+  const s = new Float32Array(n).fill(-1);
+  let idx = 0;
+  const put = (x: number, y: number, z: number, strand: number) => {
+    if (idx < n) { p[idx*3]=x; p[idx*3+1]=y; p[idx*3+2]=z; s[idx]=strand; idx++; }
+  };
+  const jit = (v: number) => (Math.random() - 0.5) * v;
+  const BX = 0.5;
+
+  // ── ENVELOPPE DE VERRE (strand=0) — profil A19 en révolution autour de Y ──
+  const glassProfile: [number, number][] = [
+    [0.00,  1.68], [0.60,  1.44], [1.08,  0.84], [1.32,  0.12],
+    [1.14, -0.30], [0.74, -0.66], [0.46, -0.98], [0.43, -1.32], [0.43, -1.62],
+  ];
+  const glassN = Math.floor(n * 0.42);
+  for (let i = 0; i < glassN; i++) {
+    const seg   = Math.floor(Math.random() * (glassProfile.length - 1));
+    const t     = Math.random();
+    const r     = glassProfile[seg][0] * (1 - t) + glassProfile[seg + 1][0] * t;
+    const y     = glassProfile[seg][1] * (1 - t) + glassProfile[seg + 1][1] * t;
+    const angle = Math.random() * Math.PI * 2;
+    put(BX + r * Math.cos(angle) + jit(0.025), y + jit(0.025), r * Math.sin(angle) + jit(0.025), 0);
   }
-  return p;
+
+  // ── FILAMENT EN HÉLICE (strand=1) — bobine luminescente ──────────────────
+  const filamentN = Math.floor(n * 0.28);
+  const coilR = 0.31, coilTurns = 6, coilYMin = -0.38, coilYMax = 0.66;
+  for (let i = 0; i < filamentN; i++) {
+    const t     = i / filamentN;
+    const angle = t * coilTurns * Math.PI * 2;
+    put(BX + Math.cos(angle) * coilR + jit(0.012),
+             coilYMin + t * (coilYMax - coilYMin) + jit(0.012),
+             Math.sin(angle) * coilR + jit(0.012), 1);
+  }
+
+  // ── HALO INTÉRIEUR (strand=2) — lueur chaude irradiée par le filament ────
+  const glowN = Math.floor(n * 0.20);
+  for (let i = 0; i < glowN; i++) {
+    const r     = Math.random() * 0.95 * Math.sqrt(Math.random());
+    const angle = Math.random() * Math.PI * 2;
+    const y     = (Math.random() * 2 - 1) * 0.72 + 0.14;
+    put(BX + r * Math.cos(angle), y, r * Math.sin(angle), 2);
+  }
+
+  // ── CULOT MÉTALLIQUE (strand=-1) — anneaux du pas de vis ─────────────────
+  while (idx < n) {
+    const ring  = Math.floor(Math.random() * 4);
+    const angle = Math.random() * Math.PI * 2;
+    const r     = 0.43 + (ring % 2) * 0.030;
+    put(BX + r * Math.cos(angle) + jit(0.020),
+             -1.62 - ring * 0.14 + jit(0.020),
+             r * Math.sin(angle) + jit(0.020), -1);
+  }
+
+  return [p, s];
 }
+
+function mkTorusKnot(n: number): Float32Array { return mkTorusKnotWithStrand(n)[0]; }
 
 // 6 — Convergence vers un point (Contact)
+// 6 — Clé du Terminal : anneau travaillé + tige + 3 crans (section Contact)
+// strand: 0=bow, 1=deco intérieure, 2=tige, 3=crans
+function mkKeyWithStrand(n: number): [Float32Array, Float32Array] {
+  const p = new Float32Array(n * 3);
+  const s = new Float32Array(n);
+  const nBow   = Math.floor(n * 0.30);
+  const nDeco  = Math.floor(n * 0.12);
+  const nShaft = Math.floor(n * 0.28);
+  const nTeeth = n - nBow - nDeco - nShaft;
+  let idx = 0;
+
+  // ── Bow : tore VERTICAL (axe Z → anneau face caméra, lira comme cercle) ──
+  // Formule : x=(R+r·cosφ)·cosθ  y=bowY+(R+r·cosφ)·sinθ  z=r·sinφ
+  // Bas de l'anneau : y = bowY-(R+r), connexion tige
+  const R = 0.42, r = 0.09, bowY = 0.68;
+  for (let i = 0; i < nBow; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.random() * Math.PI * 2;
+    const rr    = R + r * Math.cos(phi);
+    p[idx*3]   = rr * Math.cos(theta);
+    p[idx*3+1] = bowY + rr * Math.sin(theta);
+    p[idx*3+2] = r * Math.sin(phi);
+    s[idx++] = 0;
+  }
+
+  // ── Déco intérieure : ring concentrique + 6 spokes (plan XY) ──
+  for (let i = 0; i < nDeco; i++) {
+    const th = Math.random() * Math.PI * 2;
+    if (Math.random() < 0.52) {
+      const rr = R * (0.45 + Math.random() * 0.15);
+      p[idx*3]   = rr * Math.cos(th);
+      p[idx*3+1] = bowY + rr * Math.sin(th);
+      p[idx*3+2] = (Math.random() - 0.5) * 0.04;
+    } else {
+      const spokeA = Math.floor(Math.random() * 6) * Math.PI / 3;
+      const t      = Math.random();
+      const rr     = r * 0.8 + t * (R - r * 1.1 - r * 0.8);
+      p[idx*3]   = rr * Math.cos(spokeA) + (Math.random()-0.5)*0.012;
+      p[idx*3+1] = bowY + rr * Math.sin(spokeA) + (Math.random()-0.5)*0.012;
+      p[idx*3+2] = (Math.random()-0.5)*0.020;
+    }
+    s[idx++] = 1;
+  }
+
+  // ── Tige : cylindre — shaftTop = bowY-(R+r) pour connexion exacte ──
+  const shaftR = 0.055, shaftTop = bowY - (R + r), shaftBot = -0.62;
+  for (let i = 0; i < nShaft; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    p[idx*3]   = shaftR * Math.cos(theta);
+    p[idx*3+1] = shaftBot + Math.random() * (shaftTop - shaftBot);
+    p[idx*3+2] = shaftR * Math.sin(theta);
+    s[idx++] = 2;
+  }
+
+  // ── Crans : 3 dents à droite du bout de la tige ────────────
+  const teeth = [
+    { y0: -0.20, y1: -0.30, xMax: 0.22 },
+    { y0: -0.36, y1: -0.46, xMax: 0.30 },
+    { y0: -0.52, y1: -0.60, xMax: 0.20 },
+  ];
+  const nPer = Math.floor(nTeeth / teeth.length);
+  for (let ti = 0; ti < teeth.length; ti++) {
+    const { y0, y1, xMax } = teeth[ti];
+    const cnt = ti < teeth.length-1 ? nPer : nTeeth - nPer*(teeth.length-1);
+    for (let i = 0; i < cnt; i++) {
+      const face = Math.random();
+      let x, y, z;
+      if (face < 0.28) {
+        x = shaftR + Math.random()*(xMax-shaftR); y = y0; z = (Math.random()-.5)*shaftR*2;
+      } else if (face < 0.56) {
+        x = shaftR + Math.random()*(xMax-shaftR); y = y1; z = (Math.random()-.5)*shaftR*2;
+      } else if (face < 0.80) {
+        x = xMax; y = y1 + Math.random()*(y0-y1); z = (Math.random()-.5)*shaftR*2;
+      } else {
+        x = shaftR + Math.random()*(xMax-shaftR); y = y1 + Math.random()*(y0-y1); z = Math.random()<.5 ? shaftR : -shaftR;
+      }
+      p[idx*3]=x; p[idx*3+1]=y; p[idx*3+2]=z;
+      s[idx++] = 3;
+    }
+  }
+  return [p, s];
+}
+function mkKey(n: number): Float32Array { return mkKeyWithStrand(n)[0]; }
+
 function mkConverge(n: number): Float32Array {
   const p = new Float32Array(n*3);
   for (let i=0;i<n;i++){
@@ -420,7 +482,7 @@ function mkHumanoidPlaceholder(n: number): Float32Array {
   return p;
 }
 
-const SHAPE_MAKERS = [mkHumanoidPlaceholder, mkGears, mkLorenz, mkNeuralBrain, mkHelix, mkTorusKnot, mkConverge];
+const SHAPE_MAKERS = [mkHumanoidPlaceholder, mkGears, mkLorenz, mkAtom, mkHelix, mkTorusKnot, mkKey];
 
 // ─────────────────────────────────────────────────────────────────
 // DENSE FIELD — champ d'étoiles + morphing vers les shapes CP77
@@ -444,14 +506,20 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
       attribute float aRnd;
       attribute float aGear;
       attribute float aNeural;
+      attribute float aStrand;
+      attribute float aKnotStrand;
+      attribute float aKeyStrand;
       attribute vec3  aTarget;
       varying float vType;
       varying float vFocus;
       varying float vRnd;
       varying float vMorphed;
       varying float vNeural;
+      varying float vStrand;
+      varying float vKnotStrand;
+      varying float vKeyStrand;
       void main() {
-        vType = aType; vRnd = aRnd; vNeural = aNeural;
+        vType = aType; vRnd = aRnd; vNeural = aNeural; vStrand = aStrand; vKnotStrand = aKnotStrand; vKeyStrand = aKeyStrand;
         float stagger = uForming > 0.5 ? aRnd : (1.0 - aRnd);
         float tDel = clamp((uMorphT - stagger*0.22) / (1.0 - stagger*0.22 + 0.001), 0.0, 1.0);
         float tEas = tDel * tDel * (3.0 - 2.0 * tDel);
@@ -486,21 +554,44 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           pos.x += cos(uTime*0.038 + aRnd*6.283) * (0.4 + aRnd*0.5) * bg * rotAmt;
           pos.y += sin(uTime*0.031 + aRnd*5.127) * (0.3 + aRnd*0.4) * bg * rotAmt;
         }
-        // Section 3 — Cerveau : rotation Y → profil de côté + respiration
-        // length(aTarget-position)>0.8 : uniquement les particules avec une vraie cible cerveau
-        // (shapeIdx → aTarget ≠ position ; fond diffus → aTarget = position → length≈0 → pas de rotation)
-        if (uSection >= 3.0 && uSection < 4.0 && uMorphT > 0.05 && length(aTarget - position) > 0.8) {
-          float rotAmt = smoothstep(0.15, 0.85, uMorphT);
-          float ry = 0.80 * rotAmt; // ~46° en Y → profil de côté bien visible
-          float pxr = pos.x * cos(ry) + pos.z * sin(ry);
-          pos.z = -pos.x * sin(ry) + pos.z * cos(ry);
-          pos.x = pxr;
-          // Respiration douce sur le corps du cerveau (pas les connexions)
-          if (aNeural < 0.0) {
-            float distC = length(pos.xy - vec2(0.5, 0.0));
-            float brainZone = (1.0 - smoothstep(1.2, 2.4, distC)) * uMorphT;
-            pos += bDir * sin(uTime * 1.8 + aRnd * 6.28) * 0.018 * brainZone;
-          }
+        // Section 3 — Atome : rotation Z (comme une roue) — logo toujours lisible de face
+        // Uniquement noyau (aNeural=-2) et anneaux (aNeural=-0.5) — pas le nuage cloud (-1)
+        bool isAtomCore = (uSection >= 3.0 && uSection < 4.0 && uMorphT > 0.05
+                           && length(aTarget - position) > 0.8
+                           && (aNeural < -1.5 || (aNeural > -0.6 && aNeural < -0.4)));
+        if (isAtomCore) {
+          float rotAmt = smoothstep(0.40, 1.00, uMorphT);
+          float rz     = uTime * 0.22 * rotAmt;
+          vec3  c      = vec3(0.5, 0.0, 0.0);
+          vec3  off    = pos - c;
+          float pxr    = off.x * cos(rz) - off.y * sin(rz);
+          off.y        = off.x * sin(rz) + off.y * cos(rz);
+          off.x        = pxr;
+          pos           = c + off;
+          if (aNeural < -1.5)
+            pos += bDir * sin(uTime * 2.2 + aRnd * 6.28) * 0.015;
+        }
+        // Section 4 — Double hélice : rotation lente autour de son propre axe incliné
+        if (uSection >= 4.0 && uSection < 5.0 && uMorphT > 0.05 && aGear >= 0.0) {
+          float rotAmt = smoothstep(0.3, 0.8, uMorphT);
+          float angle  = uTime * 0.15 * rotAmt; // très lent : ~42 s par tour complet
+          float ca = cos(angle), sa = sin(angle);
+          float kx = 0.4794, ky = 0.8776; // axe hélice après tilt -0.5 rad
+          float kdot = pos.x * kx + pos.y * ky;
+          float crx  = ky * pos.z, cry = -kx * pos.z, crz = kx * pos.y - ky * pos.x;
+          pos.x = pos.x * ca + crx * sa + kx * kdot * (1.0 - ca);
+          pos.y = pos.y * ca + cry * sa + ky * kdot * (1.0 - ca);
+          pos.z = pos.z * ca + crz * sa;
+        }
+        // Section 5 — Ampoule : statique, le glow fait le travail
+        // Section 6 — Clé : rotation Y lente (montre le volume 3D)
+        if (uSection >= 6.0 && uMorphT > 0.05 && aKeyStrand >= 0.0) {
+          float rotAmt = smoothstep(0.3, 0.8, uMorphT);
+          float angle  = uTime * 0.28 * rotAmt;
+          float ca = cos(angle), sa = sin(angle);
+          float px = pos.x * ca + pos.z * sa;
+          pos.z    = -pos.x * sa + pos.z * ca;
+          pos.x    = px;
         }
         vec4 proj = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
         vec2 ndc  = proj.xy / proj.w;
@@ -513,9 +604,26 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
         gl_Position = projectionMatrix * mv;
         float base = aType < 0.5 ? 0.005 + aRnd*0.009 : 0.052 + aRnd*0.040;
         float isN3 = smoothstep(2.5,3.0,uSection)*(1.0-smoothstep(3.5,4.0,uSection));
-        if (isN3 > 0.01 && aNeural >= 0.0)              base = mix(base, 0.016+aRnd*0.007, isN3); // arc : fin, le pulse fait l'effet
-        if (isN3 > 0.01 && aNeural < -1.5)              base = mix(base, 0.095+aRnd*0.055, isN3); // nœud : gros
-        if (isN3 > 0.01 && aNeural > -1.0 && aNeural < 0.0) base = mix(base, 0.075+aRnd*0.035, isN3); // cortex : visible
+        if (isN3 > 0.01 && aNeural >= 0.0)              base = mix(base, 0.016+aRnd*0.007, isN3);
+        if (isN3 > 0.01 && aNeural < -1.5)              base = mix(base, 0.095+aRnd*0.055, isN3);
+        if (isN3 > 0.01 && aNeural > -1.0 && aNeural < 0.0) base = mix(base, 0.075+aRnd*0.035, isN3);
+        float isH4 = smoothstep(3.5,4.0,uSection)*(1.0-smoothstep(4.9,5.0,uSection));
+        if (isH4 > 0.01 && aGear >= 0.0) {
+          float isRung = step(0.3, aStrand) * (1.0 - step(0.7, aStrand));
+          float boost  = mix(2.8, 4.2, isRung); // brins visibles, barreaux plus épais
+          base = mix(base, base * boost, isH4 * tEas);
+        }
+        float isK5 = smoothstep(4.9,5.1,uSection)*(1.0-smoothstep(5.9,6.0,uSection));
+        if (isK5 > 0.01 && aKnotStrand >= 0.0) {
+          float isFilament = step(0.5, aKnotStrand) * (1.0 - step(1.5, aKnotStrand));
+          base = mix(base, base * mix(1.4, 2.8, isFilament), isK5 * tEas);
+        }
+        float isKey6 = smoothstep(5.9, 6.1, uSection);
+        if (isKey6 > 0.01 && aKeyStrand >= 0.0) {
+          float isBow   = 1.0 - step(0.5, aKeyStrand);
+          float isTeeth = step(2.5, aKeyStrand);
+          base = mix(base, base * mix(1.6, mix(2.2, 1.4, isTeeth), isBow), isKey6 * tEas);
+        }
         gl_PointSize = (base + tEas*0.048 + push*0.08) * (220.0 / -mv.z);
       }
     `,
@@ -527,6 +635,9 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
       varying float vRnd;
       varying float vMorphed;
       varying float vNeural;
+      varying float vStrand;
+      varying float vKnotStrand;
+      varying float vKeyStrand;
       vec3 secCol(float s) {
         float x = clamp(s/6.0,0.0,1.0);
         if (x<0.167) return mix(vec3(0.00,0.85,1.00),vec3(0.30,0.55,1.00),x*6.0);
@@ -592,6 +703,62 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
               alpha = mix(alpha, halo * pulse * (0.28 + vMorphed * 0.58), isN3);
             }
           }
+          // ── Section 4 : double hélice ADN — couleurs par brin ────────
+          float isH4 = smoothstep(3.5,4.0,uSection)*(1.0-smoothstep(4.9,5.0,uSection));
+          if (isH4 > 0.01 && vStrand >= 0.0) {
+            vec3 strandCol;
+            if (vStrand < 0.3)       strandCol = vec3(0.00, 0.88, 1.00); // Brin A : cyan électrique
+            else if (vStrand < 0.75) strandCol = vec3(0.82, 0.90, 1.00); // Barreau : blanc froid
+            else                     strandCol = vec3(1.00, 0.18, 0.62); // Brin B : rose néon
+            col   = mix(col, strandCol, isH4 * vMorphed * 0.92);
+            alpha = mix(alpha, halo * pulse * (0.10 + vRnd * 0.08 + vMorphed * 0.50), isH4);
+          }
+          // ── Section 5 : ampoule — verre · filament · halo ────────────
+          float isK5 = smoothstep(4.9,5.1,uSection)*(1.0-smoothstep(5.9,6.0,uSection));
+          if (isK5 > 0.01 && vKnotStrand >= 0.0) {
+            if (vKnotStrand < 0.5) {
+              // Enveloppe de verre : bleu-blanc translucide
+              col   = mix(col, vec3(0.72, 0.90, 1.00), isK5 * vMorphed * 0.52);
+              float gp = 0.45 + 0.55 * sin(uTime * 0.6 + vRnd * 3.14);
+              alpha = mix(alpha, halo * gp * (0.04 + vRnd * 0.05 + vMorphed * 0.12), isK5);
+            } else if (vKnotStrand < 1.5) {
+              // Filament : blanc chaud — alpha bas, le bloom fait le glow
+              col   = mix(col, vec3(1.00, 0.94, 0.70), isK5 * vMorphed * 0.96);
+              float fp = 0.62 + 0.38 * sin(uTime * 2.5 + vRnd * 6.28);
+              alpha = mix(alpha, halo * fp * (0.10 + vRnd * 0.06 + vMorphed * 0.14), isK5);
+            } else {
+              // Halo intérieur : lueur chaude concentrée dans le bulbe
+              col   = mix(col, vec3(1.00, 0.72, 0.20), isK5 * vMorphed * 0.75);
+              float hp = 0.50 + 0.50 * sin(uTime * 1.2 + vRnd * 4.71);
+              alpha = mix(alpha, halo * hp * (0.02 + vRnd * 0.03 + vMorphed * 0.06), isK5);
+            }
+          }
+          // ── Section 6 : clé du terminal — cyan holographique ─────────
+          float isKey6 = smoothstep(5.9, 6.1, uSection);
+          if (isKey6 > 0.01 && vKeyStrand >= 0.0) {
+            float kp = 0.55 + 0.45 * sin(uTime * 1.4 + vRnd * 6.28);
+            if (vKeyStrand < 0.5) {
+              // Bow (anneau) : cyan électrique — alpha bas pour que le trou reste visible
+              col   = mix(col, vec3(0.00, 0.88, 1.00), isKey6 * vMorphed * 0.95);
+              alpha = mix(alpha, halo * kp * (0.07 + vRnd * 0.05 + vMorphed * 0.16), isKey6);
+            } else if (vKeyStrand < 1.5) {
+              // Déco intérieure : bleu-circuit plus sombre
+              col   = mix(col, vec3(0.22, 0.58, 0.95), isKey6 * vMorphed * 0.85);
+              float dp = 0.40 + 0.60 * sin(uTime * 0.9 + vRnd * 4.71);
+              alpha = mix(alpha, halo * dp * (0.06 + vRnd * 0.06 + vMorphed * 0.18), isKey6);
+            } else if (vKeyStrand < 2.5) {
+              // Tige : blanc-cyan lumineux — scan vertical
+              float scanY  = fract(uTime * 0.35 + vRnd * 0.5);
+              float scanPos = fract(vRnd * 3.7 + 0.5);
+              float scan   = exp(-abs(scanPos - scanY) * 18.0) * 0.55;
+              col   = mix(col, vec3(0.65, 0.95, 1.00), isKey6 * vMorphed * 0.90);
+              alpha = mix(alpha, halo * (kp * 0.55 + scan) * (0.10 + vMorphed * 0.28), isKey6);
+            } else {
+              // Crans : cyan-vert tranchant — plus brillant pour lisibilité
+              col   = mix(col, vec3(0.00, 0.95, 0.72), isKey6 * vMorphed * 0.98);
+              alpha = mix(alpha, halo * kp * (0.14 + vRnd * 0.08 + vMorphed * 0.42), isKey6);
+            }
+          }
         }
         gl_FragColor = vec4(col, alpha);
       }
@@ -630,7 +797,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
       varying float vT;
       varying float vConn;
       void main() {
-        float isN3   = smoothstep(2.5, 3.0, uSection) * (1.0 - smoothstep(3.5, 4.0, uSection));
+        float isN3   = smoothstep(2.85, 3.15, uSection) * (1.0 - smoothstep(3.6, 3.9, uSection));
         float visible = smoothstep(0.68, 0.92, uMorphT) * isN3;
         if (visible < 0.001) discard;
         float connId = vConn;
@@ -679,73 +846,147 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     return geo;
   }, []);
 
-  // ── RÉSEAU INTERNE DU CERVEAU (lignes 3D dans l'ellipsoïde) ──────
-  const brainInternalLineMat = useMemo(() => new THREE.ShaderMaterial({
+  // ── ANNEAUX ORBITAUX DE L'ATOME ──────────────────────────────────
+  const atomRingMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: { uTime: { value: 0 }, uSection: { value: 0 }, uMorphT: { value: 0 } },
     vertexShader: `
-      attribute float aLineT;
-      uniform float uSection; uniform float uMorphT;
-      varying float vT;
+      uniform float uSection; uniform float uMorphT; uniform float uTime;
       void main() {
         vec3 pos = position;
         if (uSection >= 2.5 && uSection < 4.0) {
-          float rotAmt = smoothstep(0.15, 0.85, uMorphT);
-          float ry = 0.80 * rotAmt;
-          float px = pos.x * cos(ry) + pos.z * sin(ry);
-          pos.z    = -pos.x * sin(ry) + pos.z * cos(ry);
-          pos.x    = px;
+          float rotAmt = smoothstep(0.40, 1.00, uMorphT);
+          float rz     = uTime * 0.22 * rotAmt;
+          vec3  c      = vec3(0.5, 0.0, 0.0);
+          vec3  off    = pos - c;
+          float pxr    = off.x * cos(rz) - off.y * sin(rz);
+          off.y        = off.x * sin(rz) + off.y * cos(rz);
+          off.x        = pxr;
+          pos           = c + off;
         }
-        vT = aLineT;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
       }
     `,
     fragmentShader: `
       uniform float uTime; uniform float uSection; uniform float uMorphT;
       void main() {
-        float isN3   = smoothstep(2.5,3.0,uSection)*(1.0-smoothstep(3.5,4.0,uSection));
+        float isN3    = smoothstep(2.85,3.15,uSection)*(1.0-smoothstep(3.6,3.9,uSection));
         float visible = smoothstep(0.68,0.92,uMorphT)*isN3;
         if (visible < 0.001) discard;
-        float breathe = 0.80 + 0.20*sin(uTime*0.7);
-        gl_FragColor = vec4(0.38, 0.70, 1.0, 0.22*breathe*visible);
+        float pulse   = 0.82 + 0.18*sin(uTime*1.1);
+        gl_FragColor  = vec4(0.50, 0.88, 1.0, 0.90*pulse*visible);
       }
     `,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }), []);
 
-  // Grille lat/lon sur l'ellipsoïde du cerveau — donne les contours naturels des gyri
-  const brainInternalLineGeo = useMemo(() => {
-    const BX = 0.5, BY = 0.0;
-    const rx = 1.30, ry = 1.00, rz = 1.80;
+  // 3 anneaux orbitaux — z=0, ellipses parfaites dans le plan écran (pas de distorsion perspective)
+  const atomRingGeo = useMemo(() => {
+    const R = 1.70, BX = 0.5, BY = 0.0, SEGS = 90;
+    const CA = 0.5;
     const verts: number[] = [];
-    const HSEGS = 64; // segments par anneau horizontal
-    const VSEGS = 32; // segments par méridien vertical
-
-    // Anneaux de latitude (gyri) : ph fixe, th varie
-    for (const ph of [0.30, 0.55, 0.80, 1.05, 1.30, 1.57, 1.82, 2.07, 2.35, 2.65]) {
-      const sinPh = Math.sin(ph), cosPhY = Math.cos(ph);
-      const y = BY + ry * cosPhY;
-      for (let i = 0; i < HSEGS; i++) {
-        const th0 = (2*Math.PI*i)/HSEGS, th1 = (2*Math.PI*(i+1))/HSEGS;
+    for (const phi of [0, Math.PI/3, 2*Math.PI/3]) {
+      const cP = Math.cos(phi), sP = Math.sin(phi);
+      for (let i = 0; i < SEGS; i++) {
+        const t0 = (i       / SEGS) * Math.PI * 2;
+        const t1 = ((i + 1) / SEGS) * Math.PI * 2;
+        const [c0, s0] = [Math.cos(t0), Math.sin(t0)];
+        const [c1, s1] = [Math.cos(t1), Math.sin(t1)];
         verts.push(
-          BX + rx*sinPh*Math.cos(th0), y, rz*sinPh*Math.sin(th0),
-          BX + rx*sinPh*Math.cos(th1), y, rz*sinPh*Math.sin(th1),
-        );
-      }
-    }
-    // Méridiens (sulci) : th fixe, ph varie de 0 à π
-    for (let j = 0; j < 10; j++) {
-      const th = (2*Math.PI*j)/10;
-      const cosT = Math.cos(th), sinT = Math.sin(th);
-      for (let i = 0; i < VSEGS; i++) {
-        const ph0 = (Math.PI*i)/VSEGS, ph1 = (Math.PI*(i+1))/VSEGS;
-        verts.push(
-          BX + rx*Math.sin(ph0)*cosT, BY + ry*Math.cos(ph0), rz*Math.sin(ph0)*sinT,
-          BX + rx*Math.sin(ph1)*cosT, BY + ry*Math.cos(ph1), rz*Math.sin(ph1)*sinT,
+          BX + R*(c0*cP - CA*s0*sP), BY + R*(c0*sP + CA*s0*cP), 0,
+          BX + R*(c1*cP - CA*s1*sP), BY + R*(c1*sP + CA*s1*cP), 0,
         );
       }
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3));
+    return geo;
+  }, []);
+
+  // ── ÉLECTRONS ORBITAUX — flash ponctuel sur chaque anneau ────────
+  const electronMat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { uTime: {value:0}, uSection: {value:0}, uMorphT: {value:0} },
+    vertexShader: `
+      uniform float uTime; uniform float uSection; uniform float uMorphT;
+      attribute float aRingPhi;
+      attribute float aTrailT;
+      attribute float aPhaseOff;
+      attribute float aOrbitSpd;
+      varying float vAlpha;
+      varying float vHead;
+      void main() {
+        const float R  = 1.70;
+        const float CA = 0.50;
+        const float BX = 0.50;
+        // Activation cyclique : ~25% actif sur un cycle de 7s
+        float phase  = fract(uTime / 7.0 + aPhaseOff);
+        float active = smoothstep(0.0, 0.06, phase) * (1.0 - smoothstep(0.22, 0.28, phase));
+        // Position sur l'anneau : tête rapide, trail en arrière
+        float headA  = uTime * aOrbitSpd;
+        float angle  = headA - aTrailT * 0.65;
+        float ct = cos(angle), st = sin(angle);
+        float cP = cos(aRingPhi), sP = sin(aRingPhi);
+        vec3 pos = vec3(BX + R*(ct*cP - CA*st*sP),
+                             R*(ct*sP + CA*st*cP),
+                        0.0);
+        // Même rotation Z que l'atome
+        float rotAmt = smoothstep(0.40, 1.00, uMorphT);
+        float rz     = uTime * 0.22 * rotAmt;
+        vec3  c      = vec3(BX, 0.0, 0.0);
+        vec3  off    = pos - c;
+        float pxr    = off.x * cos(rz) - off.y * sin(rz);
+        off.y        = off.x * sin(rz) + off.y * cos(rz);
+        off.x        = pxr;
+        pos = c + off;
+        float headGlow = 1.0 - aTrailT;
+        float isN3  = smoothstep(2.85,3.15,uSection)*(1.0-smoothstep(3.6,3.9,uSection));
+        float vis   = smoothstep(0.70,0.95,uMorphT) * isN3 * active;
+        vAlpha = headGlow * headGlow * vis;
+        vHead  = headGlow;
+        float base  = 0.03 + headGlow * 0.16;
+        vec4 mv     = modelViewMatrix * vec4(pos, 1.0);
+        gl_Position  = projectionMatrix * mv;
+        gl_PointSize = base * (220.0 / -mv.z) * vis;
+      }
+    `,
+    fragmentShader: `
+      varying float vAlpha; varying float vHead;
+      void main() {
+        float d = length(gl_PointCoord - vec2(0.5));
+        if (d > 0.5) discard;
+        float halo = smoothstep(0.5, 0.02, d);
+        vec3 col   = mix(vec3(0.35,0.85,1.0), vec3(0.95,1.0,1.0), vHead * 0.85);
+        gl_FragColor = vec4(col * halo, halo * vAlpha);
+      }
+    `,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }), []);
+
+  const electronGeo = useMemo(() => {
+    const N_TRAIL = 30;
+    const phis    = [0, Math.PI/3, 2*Math.PI/3];
+    const speeds  = [2.2, 2.8, 1.8];    // rad/s différents
+    const phases  = [0.0, 0.38, 0.72];  // décalages de cycle
+    const total   = phis.length * N_TRAIL;
+    const aRingPhi  = new Float32Array(total);
+    const aTrailT   = new Float32Array(total);
+    const aPhaseOff = new Float32Array(total);
+    const aOrbitSpd = new Float32Array(total);
+    for (let r = 0; r < phis.length; r++) {
+      for (let i = 0; i < N_TRAIL; i++) {
+        const idx = r * N_TRAIL + i;
+        aRingPhi[idx]  = phis[r];
+        aTrailT[idx]   = i / (N_TRAIL - 1);
+        aPhaseOff[idx] = phases[r];
+        aOrbitSpd[idx] = speeds[r];
+      }
+    }
+    const pos = new Float32Array(total * 3); // positions calculées dans le shader
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position',  new THREE.BufferAttribute(pos,        3));
+    geo.setAttribute('aRingPhi',  new THREE.BufferAttribute(aRingPhi,  1));
+    geo.setAttribute('aTrailT',   new THREE.BufferAttribute(aTrailT,   1));
+    geo.setAttribute('aPhaseOff', new THREE.BufferAttribute(aPhaseOff, 1));
+    geo.setAttribute('aOrbitSpd', new THREE.BufferAttribute(aOrbitSpd, 1));
     return geo;
   }, []);
 
@@ -766,7 +1007,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           pos.x    = px;
         }
         vNodeId = aNodeId;
-        float isN3   = smoothstep(2.5,3.0,uSection)*(1.0-smoothstep(3.5,4.0,uSection));
+        float isN3   = smoothstep(2.85,3.15,uSection)*(1.0-smoothstep(3.6,3.9,uSection));
         float visible = smoothstep(0.68,0.92,uMorphT)*isN3;
         gl_PointSize = 6.0 * visible;
         gl_Position  = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
@@ -776,7 +1017,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
       uniform float uTime; uniform float uSection; uniform float uMorphT;
       varying float vNodeId;
       void main() {
-        float isN3   = smoothstep(2.5,3.0,uSection)*(1.0-smoothstep(3.5,4.0,uSection));
+        float isN3   = smoothstep(2.85,3.15,uSection)*(1.0-smoothstep(3.6,3.9,uSection));
         float visible = smoothstep(0.68,0.92,uMorphT)*isN3;
         if (visible < 0.001) discard;
         vec2 c = gl_PointCoord - 0.5;
@@ -809,7 +1050,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     return geo;
   }, []);
 
-  const { positions, types, rnds, allTargets, shapeIdx, gpuBuf, gearIds, neuralBuf } = useMemo(() => {
+  const { positions, types, rnds, allTargets, shapeIdx, gpuBuf, gearIds, neuralBuf, strandBuf, knotStrandBuf, keyStrandBuf } = useMemo(() => {
     const N       = 100_000;
     const N_SHAPE = 9_000;
     const pos = new Float32Array(N*3);
@@ -833,14 +1074,16 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     const shapeIdx: number[] = [];
     for (let i=0;i<N&&shapeIdx.length<N_SHAPE;i++) if (typ[i]===1) shapeIdx.push(i);
 
-    // Sections 1 & 3 gérées en amont (patterns avec données extra)
-    const [gearShapePos,  gearShapeIds] = mkGearsWithIds(shapeIdx.length);
-    const [brainShapePos, brainArcTs  ] = mkNeuralBrainWithArcT(shapeIdx.length);
+    // Sections 1, 3, 5 & 6 gérées en amont (patterns avec données extra)
+    const [gearShapePos, gearShapeIds]   = mkGearsWithIds(shapeIdx.length);
+    const [atomShapePos, atomArcTs    ]  = mkAtomWithArcT(shapeIdx.length);
+    const [knotShapePos, knotStrandIds]  = mkTorusKnotWithStrand(shapeIdx.length);
+    const [keyShapePos,  keyStrandIds ]  = mkKeyWithStrand(shapeIdx.length);
 
     const targets = SHAPE_MAKERS.map((maker, si) => {
       const tgt = new Float32Array(N*3);
       tgt.set(pos);
-      const shapePos = si === 1 ? gearShapePos : si === 3 ? brainShapePos : maker(shapeIdx.length);
+      const shapePos = si === 1 ? gearShapePos : si === 3 ? atomShapePos : si === 5 ? knotShapePos : si === 6 ? keyShapePos : maker(shapeIdx.length);
       shapeIdx.forEach((pIdx,i) => { tgt[pIdx*3]=shapePos[i*3]; tgt[pIdx*3+1]=shapePos[i*3+1]; tgt[pIdx*3+2]=shapePos[i*3+2]; });
       return tgt;
     });
@@ -849,12 +1092,27 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     shapeIdx.forEach((pIdx, si) => { gearIds[pIdx] = gearShapeIds[si]; });
 
     const neuralBuf = new Float32Array(N).fill(-1);
-    shapeIdx.forEach((pIdx, si) => { neuralBuf[pIdx] = brainArcTs[si]; });
+    shapeIdx.forEach((pIdx, si) => { neuralBuf[pIdx] = atomArcTs[si]; });
+
+    // Identité de brin — synchronisé avec mkHelix
+    const strandBuf  = new Float32Array(N).fill(-1);
+    const dnaStrandN = Math.floor((shapeIdx.length - DNA_N_RUNGS * DNA_RUNG_PTS) / 2);
+    shapeIdx.forEach((pIdx, i) => {
+      strandBuf[pIdx] = i < dnaStrandN ? 0.0 : i < dnaStrandN * 2 ? 1.0 : 0.5;
+    });
+
+    // Identité de brin du nœud de trèfle — 0=Dev(cyan) 1=Infra(violet) 2=Sécu(rouge) -1=halo
+    const knotStrandBuf = new Float32Array(N).fill(-1);
+    shapeIdx.forEach((pIdx, i) => { knotStrandBuf[pIdx] = knotStrandIds[i]; });
+
+    // Identité de brin de la clé — 0=bow 1=deco 2=tige 3=crans -1=hors shape
+    const keyStrandBuf = new Float32Array(N).fill(-1);
+    shapeIdx.forEach((pIdx, i) => { keyStrandBuf[pIdx] = keyStrandIds[i]; });
 
     const gpuBuf = new Float32Array(N*3);
     gpuBuf.set(targets[0]);
 
-    return { positions:pos, types:typ, rnds:rnd, allTargets:targets, shapeIdx, gpuBuf, gearIds, neuralBuf };
+    return { positions:pos, types:typ, rnds:rnd, allTargets:targets, shapeIdx, gpuBuf, gearIds, neuralBuf, strandBuf, knotStrandBuf, keyStrandBuf };
   }, []);
 
   const prevSecRef  = useRef(-1);
@@ -912,9 +1170,12 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     brainLineMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
     brainLineMat.uniforms.uSection.value = mat.uniforms.uSection.value;
     brainLineMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
-    brainInternalLineMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
-    brainInternalLineMat.uniforms.uSection.value = mat.uniforms.uSection.value;
-    brainInternalLineMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
+    atomRingMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
+    atomRingMat.uniforms.uSection.value = mat.uniforms.uSection.value;
+    atomRingMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
+    electronMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
+    electronMat.uniforms.uSection.value = mat.uniforms.uSection.value;
+    electronMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
     brainNodeDotsMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
     brainNodeDotsMat.uniforms.uSection.value = mat.uniforms.uSection.value;
     brainNodeDotsMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
@@ -929,13 +1190,18 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           <bufferAttribute attach="attributes-aRnd"     args={[rnds,      1]} />
           <bufferAttribute attach="attributes-aGear"    args={[gearIds,   1]} />
           <bufferAttribute attach="attributes-aNeural"  args={[neuralBuf, 1]} />
-          <bufferAttribute attach="attributes-aTarget"  args={[gpuBuf,    3]} />
+          <bufferAttribute attach="attributes-aStrand"     args={[strandBuf,     1]} />
+          <bufferAttribute attach="attributes-aKnotStrand" args={[knotStrandBuf, 1]} />
+          <bufferAttribute attach="attributes-aKeyStrand"  args={[keyStrandBuf,  1]} />
+          <bufferAttribute attach="attributes-aTarget"     args={[gpuBuf,        3]} />
         </bufferGeometry>
         <primitive object={mat} />
       </points>
-      <lineSegments args={[brainLineGeo, brainLineMat]} />
-      <lineSegments args={[brainInternalLineGeo, brainInternalLineMat]} />
-      <points args={[brainNodeDotsGeo, brainNodeDotsMat]} />
+      {/* Anciens overlays cerveau désactivés */}
+      {/* <lineSegments args={[brainLineGeo, brainLineMat]} /> */}
+      {/* <points args={[brainNodeDotsGeo, brainNodeDotsMat]} /> */}
+      <lineSegments args={[atomRingGeo, atomRingMat]} />
+      <points args={[electronGeo, electronMat]} />
     </>
   );
 }
