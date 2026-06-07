@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
+
 @keyframes termSlideDown {
   from { transform: translateY(-100%); opacity: 0; }
   to   { transform: translateY(0);     opacity: 1; }

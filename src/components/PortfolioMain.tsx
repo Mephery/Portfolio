@@ -484,6 +484,16 @@ function mkHumanoidPlaceholder(n: number): Float32Array {
 
 const SHAPE_MAKERS = [mkHumanoidPlaceholder, mkGears, mkLorenz, mkAtom, mkHelix, mkTorusKnot, mkKey];
 
+function useIsMobile() {
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < 768);
+    window.addEventListener('resize', h, { passive: true });
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return m;
+}
+
 // ─────────────────────────────────────────────────────────────────
 // DENSE FIELD — champ d'étoiles + morphing vers les shapes CP77
 // ─────────────────────────────────────────────────────────────────
@@ -1064,12 +1074,15 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
   // pointer r3f démarre à (0,0) = centre écran → repousse les particules en anneau avant tout mouvement
   const mouseNDCRef = useRef(new THREE.Vector2(-10, -10));
   useEffect(() => {
-    const h = (e: MouseEvent) => mouseNDCRef.current.set(
-      (e.clientX / window.innerWidth) * 2 - 1,
-      -(e.clientY / window.innerHeight) * 2 + 1,
+    const toNDC = (cx: number, cy: number) => mouseNDCRef.current.set(
+      (cx / window.innerWidth) * 2 - 1,
+      -(cy / window.innerHeight) * 2 + 1,
     );
+    const h  = (e: MouseEvent) => toNDC(e.clientX, e.clientY);
+    const ht = (e: TouchEvent) => { if (e.touches[0]) toNDC(e.touches[0].clientX, e.touches[0].clientY); };
     window.addEventListener('mousemove', h);
-    return () => window.removeEventListener('mousemove', h);
+    window.addEventListener('touchmove', ht, { passive: true });
+    return () => { window.removeEventListener('mousemove', h); window.removeEventListener('touchmove', ht); };
   }, []);
 
   // Construit la vraie silhouette (async mais effectivement synchrone) et met à jour allTargets[0] en place
@@ -1159,6 +1172,8 @@ function Corner({ p }: { p: 'tl'|'tr'|'bl'|'br' }) {
 function sn(seed: number) { return Math.floor(Math.abs(Math.sin(seed * 127.3 + 311.7) * 43758.5453 % 1) * 100); }
 
 function SideNums({ side, sec }: { side:'left'|'right'; sec:number }) {
+  const isMobile = useIsMobile();
+  if (isMobile) return null;
   const nums = Array.from({length:5}, (_,j) => `${sn(sec*31+j*7+(side==='right'?100:0))}`);
   return (
     <div style={{ position:'absolute', [side]:18, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:'2.5rem', pointerEvents:'none' }}>
@@ -1168,15 +1183,16 @@ function SideNums({ side, sec }: { side:'left'|'right'; sec:number }) {
 }
 
 function Timeline({ active, total, onJump }: { active:number; total:number; onJump:(i:number)=>void }) {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'0 28px 18px', pointerEvents:'none' }}>
-      <div style={{ display:'flex', justifyContent:'space-evenly', marginBottom:'8px' }}>
+    <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:`0 ${isMobile ? '12px' : '28px'} 18px`, pointerEvents:'none' }}>
+      {!isMobile && <div style={{ display:'flex', justifyContent:'space-evenly', marginBottom:'8px' }}>
         {SECTIONS.map((s,i) => (
           <span key={s.id} style={{ fontFamily:'monospace', fontSize:'0.5rem', letterSpacing:'0.3em', textTransform:'uppercase', color: i===active ? 'rgba(0,185,255,0.85)' : 'rgba(0,140,255,0.22)', transition:'color 0.4s' }}>
             {s.title.split(' ')[0]}
           </span>
         ))}
-      </div>
+      </div>}
       <div style={{ height:4, background:'rgba(0,60,140,0.22)', position:'relative', borderRadius:4 }}>
         <div style={{ position:'absolute', top:0, left:0, height:'100%', borderRadius:4, width:`${total*100}%`, background:'linear-gradient(90deg,rgba(0,150,255,0.7),rgba(0,220,255,0.95))', boxShadow:'0 0 10px rgba(0,185,255,0.55),0 0 22px rgba(0,185,255,0.22)', transition:'width 0.08s linear' }} />
         {SECTIONS.map((_,i) => (
@@ -1205,8 +1221,9 @@ function SectionText({ section, sp, onOpen }: {
   const fo  = Math.min(1, Math.max(0, (1 - sp) / 0.16));
   const op  = Math.min(fi, fo);
   const ty  = (1 - op) * 24;
+  const isMobile = useIsMobile();
   return (
-    <div style={{ position:'absolute', left:'clamp(28px,6vw,80px)', top:'50%', transform:`translateY(calc(-50% + ${ty}px))`, opacity:op, maxWidth:'44vw', minWidth:260, pointerEvents: op>0.3 ? 'auto' : 'none' }}>
+    <div style={{ position:'absolute', left: isMobile ? '16px' : 'clamp(28px,6vw,80px)', top:'50%', transform:`translateY(calc(-50% + ${ty}px))`, opacity:op, maxWidth: isMobile ? 'calc(100vw - 32px)' : '44vw', minWidth: isMobile ? undefined : 260, pointerEvents: op>0.3 ? 'auto' : 'none' }}>
       <p style={{ fontFamily:'monospace', fontSize:'0.58rem', letterSpacing:'0.7em', color:'rgba(0,185,255,0.38)', marginBottom:'0.5rem', textTransform:'uppercase' }}>
         {section.num} ——
       </p>
@@ -1230,6 +1247,7 @@ function SectionText({ section, sp, onOpen }: {
 // ─────────────────────────────────────────────────────────────────
 function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void }) {
   const SEC_COLORS = ['#00b9ff','#3d7fff','#8c3cff','#ff3250','#ff6e28','#00c8b4','#b0d4ff'];
+  const isMobile = useIsMobile();
   const btnBase: CSSProperties = { fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.45em', textTransform:'uppercase', padding:'0.32rem 0.8rem', cursor:'pointer', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,140,255,0.22)', color:'rgba(0,185,255,0.6)', transition:'all 0.22s' };
   return (
     <div className="lite-grid" style={{ minHeight:'100vh', color:'#ddeeff', position:'relative' }}>
@@ -1241,7 +1259,7 @@ function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () =
       {/* Header */}
       <header style={{ position:'sticky', top:0, zIndex:20, background:'rgba(0,2,14,0.88)', backdropFilter:'blur(20px)',
         borderBottom:'1px solid rgba(0,185,255,0.1)', boxShadow:'0 2px 40px rgba(0,185,255,0.06)' }}>
-        <div style={{ maxWidth:920, margin:'0 auto', padding:'1.1rem 2rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ maxWidth:920, margin:'0 auto', padding: isMobile ? '0.8rem 1rem' : '1.1rem 2rem', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
           <div>
             <div style={{ display:'flex', alignItems:'baseline', gap:'0.7rem' }}>
               <h1 style={{ fontSize:'1.15rem', fontWeight:700, letterSpacing:'-0.02em' }}>Coline Derycke</h1>
@@ -1267,7 +1285,7 @@ function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () =
       </header>
 
       {/* Sections */}
-      <main style={{ position:'relative', zIndex:1, maxWidth:920, margin:'0 auto', padding:'2.5rem 2rem 6rem' }}>
+      <main style={{ position:'relative', zIndex:1, maxWidth:920, margin:'0 auto', padding: isMobile ? '1.5rem 1rem 4rem' : '2.5rem 2rem 6rem' }}>
         {SECTIONS.map((s, i) => {
           const color = SEC_COLORS[i];
           const PC    = PANELS[i];
@@ -1276,7 +1294,7 @@ function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () =
               background:'rgba(0,5,18,0.55)', backdropFilter:'blur(10px)',
               borderLeft:`2px solid ${color}60`,
               boxShadow:`-5px 0 28px ${color}14, inset 0 0 80px rgba(0,185,255,0.015)`,
-              padding:'2rem 2.5rem' }}>
+              padding: isMobile ? '1.25rem 1rem' : '2rem 2.5rem' }}>
 
               {/* Numéro en filigrane */}
               <div style={{ position:'absolute', top:'-0.8rem', right:'1.2rem', fontFamily:'monospace',
@@ -1335,7 +1353,7 @@ function PChaos()      {
   </>;
 }
 function PSkills()     {
-  const cols=[{l:'Développement',s:['Node.js','React','HTML/CSS/JS','Tailwind','WebRTC','Three.js','SQL','REST API','Git']},{l:'Infra & DevOps',s:['Proxmox','Docker','Linux','Windows Server','Active Directory','Cloud Microsoft','Nginx','Bash']},{l:'Sécurité',s:['Stormshield CSNA ★','Double Ratchet E2E','XSS / SQLi','RGPD','Hash & chiffrement','Pare-feux réseau']}];
+  const cols=[{l:'Développement',s:['Node.js','React','HTML/CSS/JS','Tailwind','WebRTC','Three.js','SQL','REST API','Git']},{l:'Infra & DevOps',s:['Proxmox','Docker','Linux','Windows Server','Active Directory','Cloud Microsoft','Nginx','Bash']},{l:'Sécurité',s:['Stormshield CSNA ★','Double Ratchet E2EE','XSS / SQLi','RGPD','Hash & chiffrement','Pare-feux réseau']}];
   return <div style={{display:'grid',gap:'1.5rem'}}>{cols.map(({l,s})=><div key={l}><p style={subLabel}>{l}</p><div>{s.map(x=><span key={x} style={tagStyle}>{x}</span>)}</div></div>)}</div>;
 }
 function PExperience() {
@@ -1406,6 +1424,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
     '#ddeeff'                 // Blanc contact
   ];
   const activeColor = colors[secIdx] || 'rgba(0,185,255,0.85)';
+  const isMobile = useIsMobile();
 
   return (
     <>
@@ -1424,7 +1443,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
       {/* Le Panneau Glissant */}
       <div style={{
         position:'fixed', top:0, right:0, height:'100vh',
-        width:'min(52vw,680px)',
+        width: isMobile ? 'min(95vw,680px)' : 'min(52vw,680px)',
         
         // Esthétique Cyber : Fond ultra sombre + Scanlines subtiles en CSS
         background:`
@@ -1441,7 +1460,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
         transform: open ? 'translateX(0)' : 'translateX(100%)',
         transition:'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1)',
         zIndex:50, overflowY:'auto',
-        padding:'5.5rem 3rem 4rem',
+        padding: isMobile ? '4rem 1.5rem 3rem' : '5.5rem 3rem 4rem',
       }}>
         
         {/* Intégration des cornières HUD à l'intérieur du panneau pour habiller les angles */}
@@ -1557,7 +1576,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       if (arg==='chaos.txt') return { lines: [
         '╔══ CHAOS — Chat communautaire chiffré ══╗',
         '  Infra  : Proxmox · 2 LXC (dev/prod) · Docker · Nginx',
-        '  Back   : Node.js · PostgreSQL · WebRTC · Double Ratchet E2E',
+        '  Back   : Node.js · PostgreSQL · WebRTC · Double Ratchet E2EE',
         '  Front  : HTML/CSS/JS → React + Tailwind (Talos)',
         '  Sécu   : XSS/SQLi · hachage · OAuth Google',
         '→ https://chaos.colinederycke-portfolio.com/',
@@ -1588,6 +1607,10 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
 }
 
 type TermLine = { type:'cmd'|'out'; text:string };
+
+const TERM_CMDS  = ['about.txt','breach','cat','chaos.txt','clear','cv.txt','exit','help','ls','ping','rapport.txt','whoami'];
+const CAT_FILES  = ['cv.txt','rapport.txt','about.txt','chaos.txt'];
+const PING_HOSTS = ['hc.fr'];
 
 function Terminal({ onClose, onOpenCV, onOpenRapport }: { onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void }) {
   const [history, setHistory] = useState<TermLine[]>([
@@ -1624,6 +1647,26 @@ function Terminal({ onClose, onOpenCV, onOpenRapport }: { onClose:()=>void; onOp
   const onKD = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter')  { submit(); return; }
     if (e.key === 'Escape') { onClose(); return; }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const parts = input.split(' ');
+      const cmd   = parts[0].toLowerCase();
+      if (parts.length === 1) {
+        const matches = TERM_CMDS.filter(c => c.startsWith(cmd));
+        if (matches.length === 1) setInput(matches[0] + (matches[0].endsWith('.txt') ? '' : ' '));
+        else if (matches.length > 1) setHistory(h => [...h, { type:'out', text: matches.join('  ') }]);
+      } else if (cmd === 'cat') {
+        const partial = parts[1] ?? '';
+        const matches = CAT_FILES.filter(f => f.startsWith(partial));
+        if (matches.length === 1) setInput('cat ' + matches[0]);
+        else if (matches.length > 1) setHistory(h => [...h, { type:'out', text: matches.join('  ') }]);
+      } else if (cmd === 'ping') {
+        const partial = parts[1] ?? '';
+        const matches = PING_HOSTS.filter(h => h.startsWith(partial));
+        if (matches.length === 1) setInput('ping ' + matches[0]);
+      }
+      return;
+    }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       const n = Math.min(hIdx+1, cmdHist.length-1);
@@ -1918,6 +1961,7 @@ function RapportModal({ open, onClose }: { open: boolean; onClose: () => void })
 export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
   const zoneRef     = useRef<HTMLDivElement>(null);
   const scrollRef   = useRef<ScrollData>({ section:0, progress:0 });
+  const isMobile    = useIsMobile();
 
   const [active,    setActive]    = useState(0);
   const [sp,        setSp]        = useState(0);
@@ -2025,9 +2069,9 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
           <SideNums side="right" sec={active} />
 
           {/* Label haut gauche */}
-          <div style={{ position:'absolute', top:22, left:54, ...mono, fontSize:'0.52rem', letterSpacing:'0.55em', color:'rgba(0,185,255,0.28)', textTransform:'uppercase', pointerEvents:'none' }}>
+          {!isMobile && <div style={{ position:'absolute', top:22, left:54, ...mono, fontSize:'0.52rem', letterSpacing:'0.55em', color:'rgba(0,185,255,0.28)', textTransform:'uppercase', pointerEvents:'none' }}>
             CYBERSPACE ▸ NODE 7743 ▸ {SECTIONS[active].num}
-          </div>
+          </div>}
 
           {/* Indicateur scroll initial */}
           <div style={{
@@ -2051,7 +2095,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
           />
 
           {/* Boutons HUD haut-droit */}
-          <div style={{ position:'absolute', top:22, right:54, display:'flex', gap:'0.4rem', zIndex:10 }}>
+          <div style={{ position:'absolute', top:22, right: isMobile ? 12 : 54, display:'flex', gap:'0.4rem', zIndex:10 }}>
             <button onClick={() => setTermOpen(t => !t)}
               style={{ fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.35em', textTransform:'uppercase', padding:'0.28rem 0.65rem', cursor:'pointer', color: termOpen ? 'rgba(0,185,255,0.95)' : 'rgba(0,185,255,0.5)', background: termOpen ? 'rgba(0,185,255,0.08)' : 'rgba(0,8,22,0.55)', backdropFilter:'blur(4px)', border:`1px solid ${termOpen ? 'rgba(0,185,255,0.4)' : 'rgba(0,140,255,0.16)'}`, transition:'all 0.2s' }}
               onMouseEnter={e => Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.95)',borderColor:'rgba(0,185,255,0.4)'})}
