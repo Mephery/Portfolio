@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -663,6 +663,8 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           alpha = halo * twink * (0.04 + vRnd*0.07);
         } else {
           col = secCol(uSection);
+          // Section 2 — Lorenz : rouge sombre → orangé selon vRnd
+          col = mix(col, mix(vec3(0.60, 0.04, 0.0), vec3(1.0, 0.50, 0.05), vRnd), isChaos * 0.85);
           col = mix(col, vec3(1.0), vMorphed*0.45);
           col = mix(col, vec3(1.0,0.12,0.04), vFocus*vFocus*0.55);
           alpha = halo * pulse * (0.08 + vRnd*0.10 + vFocus*0.68 + vMorphed*0.32);
@@ -766,27 +768,26 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }), []);
 
-  // ── BRAIN LINES : vraies lignes géométriques qui apparaissent une fois le cerveau formé ──
-  const brainLineMat = useMemo(() => new THREE.ShaderMaterial({
+  // ── FILAMENTS DE L'ATTRACTEUR DE LORENZ (section Chaos) ─────────
+  const lorenzLineMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: { uTime: { value: 0 }, uSection: { value: 0 }, uMorphT: { value: 0 } },
     vertexShader: `
-      attribute float aLineT;
-      attribute float aLineConn;
+      attribute float aT;
+      uniform float uTime;
       uniform float uSection;
       uniform float uMorphT;
       varying float vT;
-      varying float vConn;
       void main() {
         vec3 pos = position;
-        if (uSection >= 2.5 && uSection < 4.0) {
-          float rotAmt = smoothstep(0.15, 0.85, uMorphT);
-          float ry = 0.80 * rotAmt;
-          float px = pos.x * cos(ry) + pos.z * sin(ry);
-          pos.z    = -pos.x * sin(ry) + pos.z * cos(ry);
-          pos.x    = px;
+        // Même rotation Y lente que les particules Lorenz (section 2)
+        if (uSection >= 1.8 && uSection < 3.1) {
+          float rotAmt = smoothstep(0.3, 0.8, uMorphT);
+          float ra = uTime * 0.07 * rotAmt;
+          float px = pos.x * cos(ra) + pos.z * sin(ra);
+          pos.z   = -pos.x * sin(ra) + pos.z * cos(ra);
+          pos.x   = px;
         }
-        vT    = aLineT;
-        vConn = aLineConn;
+        vT = aT;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
       }
     `,
@@ -795,54 +796,56 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
       uniform float uSection;
       uniform float uMorphT;
       varying float vT;
-      varying float vConn;
+      float gpulse(float t, float pos, float sharpness) {
+        float d = abs(t - pos);
+        d = min(d, 1.0 - d);
+        return exp(-d * d * sharpness);
+      }
       void main() {
-        float isN3   = smoothstep(2.85, 3.15, uSection) * (1.0 - smoothstep(3.6, 3.9, uSection));
-        float visible = smoothstep(0.68, 0.92, uMorphT) * isN3;
+        float isChaos = smoothstep(1.8, 2.2, uSection) * (1.0 - smoothstep(2.7, 3.1, uSection));
+        float visible = isChaos * smoothstep(0.6, 0.95, uMorphT);
         if (visible < 0.001) discard;
-        float connId = vConn;
-        float speed  = 0.36 + mod(connId, 5.0) * 0.06;
-        float pPos   = fract(uTime * speed + connId * 0.137);
-        float dist   = min(abs(vT - pPos), min(abs(vT - pPos + 1.0), abs(vT - pPos - 1.0)));
-        float pulse  = exp(-dist * dist * 18.0);
-        float cm = mod(connId, 6.0);
-        vec3 connCol = cm < 0.5 ? vec3(0.0,0.95,1.0)  : cm < 1.5 ? vec3(0.65,0.30,1.0)
-                     : cm < 2.5 ? vec3(1.0,0.82,0.0)  : cm < 3.5 ? vec3(0.15,0.90,0.50)
-                     : cm < 4.5 ? vec3(1.0,0.28,0.72) : vec3(0.35,0.88,1.0);
-        vec3 col   = mix(vec3(0.60, 0.82, 1.0), connCol, pulse * 0.90);
-        float alpha = (0.22 + pulse * 1.10) * visible;
-        gl_FragColor = vec4(col, alpha);
+        // Ligne de base : dégradé rouge sombre → orangé le long de la trajectoire
+        vec3 baseCol = mix(vec3(0.55, 0.05, 0.0), vec3(1.0, 0.45, 0.0), vT);
+        float baseAlpha = 0.11;
+        // Pulse 1 — orange vif, lent (20 s/boucle)
+        float p1 = gpulse(vT, fract(uTime * 0.050),        1800.0);
+        // Pulse 2 — rouge, moyen (13 s/boucle), décalé
+        float p2 = gpulse(vT, fract(uTime * 0.077 + 0.37), 2200.0);
+        // Pulse 3 — ambre/jaune, modéré (8 s/boucle), décalé
+        float p3 = gpulse(vT, fract(uTime * 0.125 + 0.71), 2800.0);
+        vec3  pulseCol   = vec3(1.0, 0.55, 0.0)  * p1 * 0.9
+                         + vec3(1.0, 0.10, 0.02) * p2 * 0.75
+                         + vec3(1.0, 0.80, 0.10) * p3 * 0.65;
+        float pulseAlpha = p1 * 0.88 + p2 * 0.72 + p3 * 0.60;
+        gl_FragColor = vec4(baseCol * baseAlpha + pulseCol, (baseAlpha + pulseAlpha) * visible);
       }
     `,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }), []);
 
-  const brainLineGeo = useMemo(() => {
-    const SEGS = 40;
-    const totalVerts = NEURAL_CONNS.length * SEGS * 2;
-    const pos     = new Float32Array(totalVerts * 3);
-    const aLineT  = new Float32Array(totalVerts);
-    const aLineConn = new Float32Array(totalVerts);
-    NEURAL_CONNS.forEach(([ai, bi], ci) => {
-      const [ax, ay] = BRAIN_NODES[ai];
-      const [bx, by] = BRAIN_NODES[bi];
-      for (let s = 0; s < SEGS; s++) {
-        const t0 = s / SEGS, t1 = (s + 1) / SEGS;
-        const vi = (ci * SEGS + s) * 2;
-        pos[vi*3]       = ax + (bx - ax) * t0;
-        pos[vi*3+1]     = ay + (by - ay) * t0;
-        pos[vi*3+2]     = 0;
-        pos[(vi+1)*3]   = ax + (bx - ax) * t1;
-        pos[(vi+1)*3+1] = ay + (by - ay) * t1;
-        pos[(vi+1)*3+2] = 0;
-        aLineT[vi] = t0; aLineT[vi+1] = t1;
-        aLineConn[vi] = ci; aLineConn[vi+1] = ci;
-      }
-    });
+  const lorenzLineGeo = useMemo(() => {
+    const N = 6000;
+    const pts = new Float32Array(N * 3);
+    let x=0.1, y=0, z=0;
+    const dt=0.005, s=10, r=28, b=8/3;
+    for (let i=0; i<600; i++) { const dx=s*(y-x), dy=x*(r-z)-y, dz=x*y-b*z; x+=dx*dt; y+=dy*dt; z+=dz*dt; }
+    for (let i=0; i<N; i++) {
+      const dx=s*(y-x), dy=x*(r-z)-y, dz=x*y-b*z; x+=dx*dt; y+=dy*dt; z+=dz*dt;
+      pts[i*3]=x*0.16; pts[i*3+1]=(z-25)*0.13; pts[i*3+2]=y*0.09-0.5;
+    }
+    const nSeg = N - 1;
+    const pos = new Float32Array(nSeg * 2 * 3);
+    const aT  = new Float32Array(nSeg * 2);
+    for (let i=0; i<nSeg; i++) {
+      pos[(i*2)*3+0] = pts[i*3]; pos[(i*2)*3+1] = pts[i*3+1]; pos[(i*2)*3+2] = pts[i*3+2];
+      pos[(i*2+1)*3+0] = pts[(i+1)*3]; pos[(i*2+1)*3+1] = pts[(i+1)*3+1]; pos[(i*2+1)*3+2] = pts[(i+1)*3+2];
+      aT[i*2]   = i / (N-1);
+      aT[i*2+1] = (i+1) / (N-1);
+    }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aLineT',   new THREE.BufferAttribute(aLineT, 1));
-    geo.setAttribute('aLineConn',new THREE.BufferAttribute(aLineConn, 1));
+    geo.setAttribute('aT',       new THREE.BufferAttribute(aT,  1));
     return geo;
   }, []);
 
@@ -990,66 +993,6 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     return geo;
   }, []);
 
-  // ── ÉTOILES AUX NŒUDS (outer constellation + internes) ──────────
-  const brainNodeDotsMat = useMemo(() => new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uSection: { value: 0 }, uMorphT: { value: 0 } },
-    vertexShader: `
-      attribute float aNodeId;
-      uniform float uSection; uniform float uMorphT; uniform float uTime;
-      varying float vNodeId;
-      void main() {
-        vec3 pos = position;
-        if (uSection >= 2.5 && uSection < 4.0) {
-          float rotAmt = smoothstep(0.15, 0.85, uMorphT);
-          float ry = 0.80 * rotAmt;
-          float px = pos.x * cos(ry) + pos.z * sin(ry);
-          pos.z    = -pos.x * sin(ry) + pos.z * cos(ry);
-          pos.x    = px;
-        }
-        vNodeId = aNodeId;
-        float isN3   = smoothstep(2.85,3.15,uSection)*(1.0-smoothstep(3.6,3.9,uSection));
-        float visible = smoothstep(0.68,0.92,uMorphT)*isN3;
-        gl_PointSize = 6.0 * visible;
-        gl_Position  = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform float uTime; uniform float uSection; uniform float uMorphT;
-      varying float vNodeId;
-      void main() {
-        float isN3   = smoothstep(2.85,3.15,uSection)*(1.0-smoothstep(3.6,3.9,uSection));
-        float visible = smoothstep(0.68,0.92,uMorphT)*isN3;
-        if (visible < 0.001) discard;
-        vec2 c = gl_PointCoord - 0.5;
-        float d = length(c);
-        if (d > 0.5) discard;
-        float core = 1.0 - smoothstep(0.0, 0.22, d);
-        float halo = 1.0 - smoothstep(0.22, 0.50, d);
-        float pulse = 0.70 + 0.30 * sin(uTime*2.2 + vNodeId*1.618);
-        float cm = mod(vNodeId, 6.0);
-        vec3 col = cm<0.5 ? vec3(0.0,0.95,1.0) : cm<1.5 ? vec3(0.65,0.30,1.0)
-                 : cm<2.5 ? vec3(1.0,0.82,0.0)  : cm<3.5 ? vec3(0.15,0.90,0.50)
-                 : cm<4.5 ? vec3(1.0,0.28,0.72)  : vec3(0.35,0.88,1.0);
-        col = mix(col, vec3(1.0), core * 0.6);
-        gl_FragColor = vec4(col, (core*0.95+halo*0.45)*pulse*visible);
-      }
-    `,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  }), []);
-
-  const brainNodeDotsGeo = useMemo(() => {
-    const all: [number,number,number,number][] = [
-      ...BRAIN_NODES.map(([x,y],i) => [x,y,0,i] as [number,number,number,number]),
-    ];
-    const pos = new Float32Array(all.length * 3);
-    const aNodeId = new Float32Array(all.length);
-    all.forEach(([x,y,z,id],i) => { pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z; aNodeId[i]=id; });
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aNodeId',  new THREE.BufferAttribute(aNodeId, 1));
-    return geo;
-  }, []);
-
   const { positions, types, rnds, allTargets, shapeIdx, gpuBuf, gearIds, neuralBuf, strandBuf, knotStrandBuf, keyStrandBuf } = useMemo(() => {
     const N       = 100_000;
     const N_SHAPE = 9_000;
@@ -1167,18 +1110,15 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     mat.uniforms.uSection.value = section + sp;
     mat.uniforms.uMorphT.value  = morphT;
     mat.uniforms.uForming.value = forming;
-    brainLineMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
-    brainLineMat.uniforms.uSection.value = mat.uniforms.uSection.value;
-    brainLineMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
+    lorenzLineMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
+    lorenzLineMat.uniforms.uSection.value = mat.uniforms.uSection.value;
+    lorenzLineMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
     atomRingMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
     atomRingMat.uniforms.uSection.value = mat.uniforms.uSection.value;
     atomRingMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
     electronMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
     electronMat.uniforms.uSection.value = mat.uniforms.uSection.value;
     electronMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
-    brainNodeDotsMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
-    brainNodeDotsMat.uniforms.uSection.value = mat.uniforms.uSection.value;
-    brainNodeDotsMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
   });
 
   return (
@@ -1197,9 +1137,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
         </bufferGeometry>
         <primitive object={mat} />
       </points>
-      {/* Anciens overlays cerveau désactivés */}
-      {/* <lineSegments args={[brainLineGeo, brainLineMat]} /> */}
-      {/* <points args={[brainNodeDotsGeo, brainNodeDotsMat]} /> */}
+      <lineSegments args={[lorenzLineGeo, lorenzLineMat]} />
       <lineSegments args={[atomRingGeo, atomRingMat]} />
       <points args={[electronGeo, electronMat]} />
     </>
@@ -1221,7 +1159,7 @@ function Corner({ p }: { p: 'tl'|'tr'|'bl'|'br' }) {
 function sn(seed: number) { return Math.floor(Math.abs(Math.sin(seed * 127.3 + 311.7) * 43758.5453 % 1) * 100); }
 
 function SideNums({ side, sec }: { side:'left'|'right'; sec:number }) {
-  const nums = Array.from({length:5}, (_,j) => `${sn(sec*31+j*7+(side==='r'?100:0))}`);
+  const nums = Array.from({length:5}, (_,j) => `${sn(sec*31+j*7+(side==='right'?100:0))}`);
   return (
     <div style={{ position:'absolute', [side]:18, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:'2.5rem', pointerEvents:'none' }}>
       {nums.map((n,i) => <span key={i} style={{ fontFamily:'monospace', fontSize:'0.6rem', color:'rgba(0,185,255,0.18)' }}>{n}</span>)}
@@ -1229,23 +1167,25 @@ function SideNums({ side, sec }: { side:'left'|'right'; sec:number }) {
   );
 }
 
-function Timeline({ active, total }: { active:number; total:number }) {
+function Timeline({ active, total, onJump }: { active:number; total:number; onJump:(i:number)=>void }) {
   return (
-    <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'0 28px 14px', pointerEvents:'none' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
+    <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'0 28px 18px', pointerEvents:'none' }}>
+      <div style={{ display:'flex', justifyContent:'space-evenly', marginBottom:'8px' }}>
         {SECTIONS.map((s,i) => (
           <span key={s.id} style={{ fontFamily:'monospace', fontSize:'0.5rem', letterSpacing:'0.3em', textTransform:'uppercase', color: i===active ? 'rgba(0,185,255,0.85)' : 'rgba(0,140,255,0.22)', transition:'color 0.4s' }}>
             {s.title.split(' ')[0]}
           </span>
         ))}
       </div>
-      <div style={{ height:1, background:'rgba(0,60,140,0.28)', position:'relative' }}>
-        <div style={{ position:'absolute', top:0, left:0, height:1, width:`${total*100}%`, background:'rgba(0,185,255,0.4)', transition:'width 0.08s linear' }} />
+      <div style={{ height:4, background:'rgba(0,60,140,0.22)', position:'relative', borderRadius:4 }}>
+        <div style={{ position:'absolute', top:0, left:0, height:'100%', borderRadius:4, width:`${total*100}%`, background:'linear-gradient(90deg,rgba(0,150,255,0.7),rgba(0,220,255,0.95))', boxShadow:'0 0 10px rgba(0,185,255,0.55),0 0 22px rgba(0,185,255,0.22)', transition:'width 0.08s linear' }} />
         {SECTIONS.map((_,i) => (
-          <div key={i} style={{ position:'absolute', top:'50%', left:`${(i/(N_SEC-1))*100}%`, transform:'translate(-50%,-50%)', width: i===active?7:5, height: i===active?7:5, borderRadius:'50%', background: i<=active ? 'rgba(0,185,255,0.8)' : 'rgba(0,60,140,0.4)', boxShadow: i===active?'0 0 8px rgba(0,185,255,0.8)':'none', transition:'all 0.3s' }} />
+          <div key={i}
+            onClick={() => onJump(i)}
+            style={{ position:'absolute', top:'50%', left:`${((i+0.5)/N_SEC)*100}%`, transform:'translate(-50%,-50%)', width:i===active?12:8, height:i===active?12:8, borderRadius:'50%', background:i<=active?'rgba(0,210,255,0.92)':'rgba(0,60,140,0.5)', boxShadow:i===active?'0 0 14px rgba(0,185,255,0.9),0 0 28px rgba(0,185,255,0.4)':'none', transition:'all 0.3s', cursor:'pointer', pointerEvents:'auto' }} />
         ))}
       </div>
-      <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
         <span style={{ fontFamily:'monospace', fontSize:'0.5rem', color:'rgba(0,140,255,0.28)', letterSpacing:'0.4em' }}>NODE {String(active+1).padStart(2,'0')} / {String(N_SEC).padStart(2,'0')}</span>
         <span style={{ fontFamily:'monospace', fontSize:'0.5rem', color:'rgba(0,140,255,0.28)', letterSpacing:'0.35em' }}>↓ SCROLL</span>
       </div>
@@ -1286,6 +1226,82 @@ function SectionText({ section, sp, onOpen }: {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// MODE LÉGER — layout statique, zéro Three.js
+// ─────────────────────────────────────────────────────────────────
+function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void }) {
+  const SEC_COLORS = ['#00b9ff','#3d7fff','#8c3cff','#ff3250','#ff6e28','#00c8b4','#b0d4ff'];
+  const btnBase: CSSProperties = { fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.45em', textTransform:'uppercase', padding:'0.32rem 0.8rem', cursor:'pointer', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,140,255,0.22)', color:'rgba(0,185,255,0.6)', transition:'all 0.22s' };
+  return (
+    <div className="lite-grid" style={{ minHeight:'100vh', color:'#ddeeff', position:'relative' }}>
+
+      {/* CRT scanlines */}
+      <div style={{ position:'fixed', inset:0, zIndex:0, pointerEvents:'none',
+        background:'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,185,255,0.013) 3px,rgba(0,185,255,0.013) 4px)' }} />
+
+      {/* Header */}
+      <header style={{ position:'sticky', top:0, zIndex:20, background:'rgba(0,2,14,0.88)', backdropFilter:'blur(20px)',
+        borderBottom:'1px solid rgba(0,185,255,0.1)', boxShadow:'0 2px 40px rgba(0,185,255,0.06)' }}>
+        <div style={{ maxWidth:920, margin:'0 auto', padding:'1.1rem 2rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div style={{ display:'flex', alignItems:'baseline', gap:'0.7rem' }}>
+              <h1 style={{ fontSize:'1.15rem', fontWeight:700, letterSpacing:'-0.02em' }}>Coline Derycke</h1>
+              <span style={{ fontFamily:'monospace', fontSize:'0.42rem', color:'rgba(0,185,255,0.3)', letterSpacing:'0.5em', textTransform:'uppercase' }}>v.lite</span>
+            </div>
+            <p style={{ fontFamily:'monospace', fontSize:'0.5rem', color:'rgba(0,185,255,0.38)', letterSpacing:'0.55em', textTransform:'uppercase', marginTop:'0.18rem' }}>DEV · INFRA · SÉCURITÉ</p>
+          </div>
+          <div style={{ display:'flex', gap:'0.45rem' }}>
+            <button onClick={onHeavy} style={btnBase}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.95)',borderColor:'rgba(0,185,255,0.5)',boxShadow:'0 0 14px rgba(0,185,255,0.18)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.6)',borderColor:'rgba(0,140,255,0.22)',boxShadow:'none'})}>
+              ◈ VERSION 3D
+            </button>
+            {onBack && (
+              <button onClick={onBack} style={btnBase}
+                onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,50,80,0.9)',borderColor:'rgba(255,30,60,0.45)',boxShadow:'0 0 14px rgba(255,40,70,0.12)'})}
+                onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.6)',borderColor:'rgba(0,140,255,0.22)',boxShadow:'none'})}>
+                ← ACCUEIL
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Sections */}
+      <main style={{ position:'relative', zIndex:1, maxWidth:920, margin:'0 auto', padding:'2.5rem 2rem 6rem' }}>
+        {SECTIONS.map((s, i) => {
+          const color = SEC_COLORS[i];
+          const PC    = PANELS[i];
+          return (
+            <section key={s.id} style={{ marginBottom:'2rem', position:'relative', overflow:'hidden',
+              background:'rgba(0,5,18,0.55)', backdropFilter:'blur(10px)',
+              borderLeft:`2px solid ${color}60`,
+              boxShadow:`-5px 0 28px ${color}14, inset 0 0 80px rgba(0,185,255,0.015)`,
+              padding:'2rem 2.5rem' }}>
+
+              {/* Numéro en filigrane */}
+              <div style={{ position:'absolute', top:'-0.8rem', right:'1.2rem', fontFamily:'monospace',
+                fontSize:'6rem', fontWeight:900, color:`${color}09`, lineHeight:1,
+                userSelect:'none', pointerEvents:'none', letterSpacing:'-0.05em' }}>{s.num}</div>
+
+              <p style={{ fontFamily:'monospace', fontSize:'0.5rem', letterSpacing:'0.7em',
+                color:`${color}70`, marginBottom:'0.45rem', textTransform:'uppercase' }}>{s.num} ——</p>
+              <h2 style={{ fontSize:'clamp(1.3rem,2.5vw,1.9rem)', fontWeight:700, letterSpacing:'-0.02em',
+                color:'#ddeeff', marginBottom:'0.35rem', textShadow:`0 0 40px ${color}28` }}>{s.title}</h2>
+              <p style={{ fontFamily:'monospace', fontSize:'0.58rem', color:`${color}80`,
+                letterSpacing:'0.4em', textTransform:'uppercase', marginBottom:'1.6rem' }}>{s.tagline}</p>
+
+              <div style={{ borderTop:`1px solid ${color}18`, paddingTop:'1.6rem' }}>
+                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} /> : <PC />}
+              </div>
+            </section>
+          );
+        })}
+      </main>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
 // PANELS — contenu détaillé
 // ─────────────────────────────────────────────────────────────────
 const mono: CSSProperties = { fontFamily:'monospace' };
@@ -1304,7 +1320,19 @@ function PCompany()    {
 }
 function PChaos()      {
   const s1=['Node.js','HTML/CSS/JS','WebRTC','PostgreSQL','Docker','Proxmox','Nginx','Double Ratchet','OAuth Google'];
-  return <><p style={{...body,marginBottom:'1.5rem'}}>Construit de bout en bout : infra Proxmox (2 LXC dev/prod) sur un serveur domestique, Docker Compose (Postgres + Nginx), jusqu'au frontend · Messagerie chiffrée de bout en bout (Double Ratchet) · WebRTC avec IA suppresseur de bruit · app de modération · protection failles XSS/SQLi · Authentification possible via Google.</p><p style={subLabel}>Stack Chaos</p><div style={{marginBottom:'1.5rem'}}>{s1.map(s=><span key={s} style={{...tagStyle,borderColor:'rgba(255,60,80,0.2)',color:'rgba(255,130,145,0.85)'}}>{s}</span>)}</div><p style={subLabel}>Talos · supervision & admin</p><div>{['React','Tailwind','Node.js'].map(s=><span key={s} style={tagStyle}>{s}</span>)}</div></>;
+  return <>
+    <p style={{...body,marginBottom:'1.5rem'}}>Construit de bout en bout : infra Proxmox (2 LXC dev/prod) sur un serveur domestique, Docker Compose (Postgres + Nginx), jusqu'au frontend · Messagerie chiffrée de bout en bout (Double Ratchet) · WebRTC avec IA suppresseur de bruit · app de modération · protection failles XSS/SQLi · Authentification possible via Google.</p>
+    <a href="https://chaos.colinederycke-portfolio.com/" target="_blank" rel="noopener noreferrer"
+      style={{display:'inline-block',marginBottom:'2rem',...mono,fontSize:'0.62rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.55rem 1.25rem',cursor:'pointer',color:'rgba(255,130,145,0.9)',background:'rgba(22,0,8,0.7)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,60,80,0.3)',textDecoration:'none',transition:'all 0.25s'}}
+      onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(255,60,80,0.7)',background:'rgba(40,0,12,0.8)',boxShadow:'0 0 18px rgba(255,40,70,0.25)'})}
+      onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,130,145,0.9)',borderColor:'rgba(255,60,80,0.3)',background:'rgba(22,0,8,0.7)',boxShadow:'none'})}>
+      → OUVRIR CHAOS ↗
+    </a>
+    <p style={subLabel}>Stack Chaos</p>
+    <div style={{marginBottom:'1.5rem'}}>{s1.map(s=><span key={s} style={{...tagStyle,borderColor:'rgba(255,60,80,0.2)',color:'rgba(255,130,145,0.85)'}}>{s}</span>)}</div>
+    <p style={subLabel}>Talos · supervision & admin</p>
+    <div>{['React','Tailwind','Node.js'].map(s=><span key={s} style={tagStyle}>{s}</span>)}</div>
+  </>;
 }
 function PSkills()     {
   const cols=[{l:'Développement',s:['Node.js','React','HTML/CSS/JS','Tailwind','WebRTC','Three.js','SQL','REST API','Git']},{l:'Infra & DevOps',s:['Proxmox','Docker','Linux','Windows Server','Active Directory','Cloud Microsoft','Nginx','Bash']},{l:'Sécurité',s:['Stormshield CSNA ★','Double Ratchet E2E','XSS / SQLi','RGPD','Hash & chiffrement','Pare-feux réseau']}];
@@ -1313,12 +1341,49 @@ function PSkills()     {
 function PExperience() {
   return <><div style={{marginBottom:'2rem'}}><p style={{...mono,fontSize:'0.58rem',color:'rgba(0,185,255,0.32)',letterSpacing:'0.5em',marginBottom:'0.3rem',textTransform:'uppercase'}}>2025 — EN COURS</p><p style={{fontWeight:600,color:'#ddeeff',marginBottom:'0.2rem'}}>Human's Connexion</p><p style={{...mono,fontSize:'0.65rem',color:'rgba(0,185,255,0.5)',marginBottom:'0.6rem'}}>Technicienne systèmes & réseaux · Alternance BTS SIO</p><p style={body}>Infogérance, AD, cloud Microsoft, sécurité infrastructure, supervision, gestion de parcs.</p></div><div><p style={{...mono,fontSize:'0.58rem',color:'rgba(255,80,100,0.38)',letterSpacing:'0.5em',marginBottom:'0.3rem',textTransform:'uppercase'}}>2025</p><p style={{fontWeight:600,color:'#ddeeff',marginBottom:'0.2rem'}}>Stormshield CSNA</p><p style={{...mono,fontSize:'0.65rem',color:'rgba(255,80,100,0.52)',marginBottom:'0.6rem'}}>Certified Stormshield Network Administrator</p><p style={body}>Configuration, sécurisation et supervision de pare-feux Stormshield.</p></div></>;
 }
-function PSchool()     {
-  return <div style={{display:'grid',gap:'1.25rem'}}>{[1,2,3].map(n=><div key={n} style={{padding:'1.25rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}><p style={{fontWeight:600,color:'#ddeeff',marginBottom:'0.5rem'}}>Projets de BTS {n}</p><p style={{...body,color:'rgba(200,220,255,0.55)',fontSize:'0.85rem'}}>[Description du projet, contexte, ce qui a été développé + potentiel lien GitHub]</p></div>)}</div>;
+function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
+  const projs = [
+    { title:'Clone Netflix',          tech:['HTML','CSS','JavaScript'], desc:"Reproduction fidèle de l'interface Netflix — hero animé, carousels de contenus, design responsive. Exercice de CSS avancé et manipulation du DOM." },
+    { title:'Pomodoro',               tech:['HTML','CSS','JavaScript'], desc:'Timer Pomodoro avec cycles travail/pause configurables, notifications sonores et suivi de sessions. Interface soignée autour de la gestion du temps.' },
+    { title:'Typing Speed Challenge', tech:['À définir'],               desc:'En cours de développement — test de vitesse de frappe avec statistiques en temps réel. Choix du framework encore en cours.' },
+  ];
+  const lnk: CSSProperties = { ...mono, fontSize:'0.68rem', letterSpacing:'0.3em', color:'rgba(0,200,180,0.75)', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'none' };
+  return (
+    <div style={{display:'grid',gap:'1.25rem'}}>
+      {projs.map(({title,tech,desc},n)=>(
+        <div key={title} style={{padding:'1.25rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem'}}>
+            <p style={{fontWeight:600,color:'#ddeeff'}}>{title}</p>
+            <span style={{...mono,fontSize:'0.52rem',color:'rgba(0,185,255,0.25)',letterSpacing:'0.4em'}}>0{n+1}</span>
+          </div>
+          <div style={{marginBottom:'0.6rem'}}>{tech.map(t=><span key={t} style={tagStyle}>{t}</span>)}</div>
+          <p style={{...body,color:'rgba(200,220,255,0.55)',fontSize:'0.85rem'}}>{desc}</p>
+        </div>
+      ))}
+      {onOpenRapport && (
+        <div style={{marginTop:'0.25rem'}}>
+          <button onClick={onOpenRapport} style={lnk}
+            onMouseEnter={e=>e.currentTarget.style.color='rgba(0,200,180,1)'}
+            onMouseLeave={e=>e.currentTarget.style.color='rgba(0,200,180,0.75)'}>
+            ▸ RAPPORT DE FABRICATION ↗
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
-function PContact()    {
-  const l=[{h:'mailto:coline.derycke@gmail.com',t:'coline.derycke@gmail.com'},{h:'#',t:'GitHub'},{h:'#',t:'LinkedIn'}];
-  return <><p style={{...body,marginBottom:'2rem'}}>[Message d'accroche — disponibilité, poste recherché...]</p>{l.map(({h,t})=><div key={t} style={{marginBottom:'0.8rem'}}><a href={h} style={{...mono,fontSize:'0.68rem',letterSpacing:'0.3em',color:'rgba(0,185,255,0.75)',textDecoration:'none'}} onMouseEnter={e=>e.currentTarget.style.color='rgba(255,50,80,0.9)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(0,185,255,0.75)'}>▸ {t.toUpperCase()}</a></div>)}</>;
+function PContact({ onOpenCV }: { onOpenCV?: () => void }) {
+  const l=[
+    {h:'mailto:coline.derycke@gmail.com',    t:'coline.derycke@gmail.com'},
+    {h:'https://github.com/Mephery',          t:'GitHub · Mephery'},
+    {h:'https://www.linkedin.com/in/coline-derycke-51956a2ab/', t:'LinkedIn · Coline Derycke'},
+  ];
+  const lnk: CSSProperties = {...mono,fontSize:'0.68rem',letterSpacing:'0.3em',color:'rgba(0,185,255,0.75)',textDecoration:'none'};
+  return <>
+    <p style={{...body,marginBottom:'2rem'}}>Développeuse passionnée par le code, l'infra et la sécurité — j'aime construire des systèmes complets, du serveur au frontend. Actuellement en BTS SIO SLAM 2ème année en alternance, je recherche une <strong style={{color:'rgba(0,185,255,0.85)'}}>alternance à partir de septembre 2027</strong> dans le cadre d'une poursuite d'études (école d'ingénieur ou MIAGE).</p>
+    {l.map(({h,t})=><div key={t} style={{marginBottom:'0.8rem'}}><a href={h} target="_blank" rel="noopener noreferrer" style={lnk} onMouseEnter={e=>e.currentTarget.style.color='rgba(255,50,80,0.9)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(0,185,255,0.75)'}>▸ {t.toUpperCase()}</a></div>)}
+    {onOpenCV && <div style={{marginTop:'0.8rem'}}><button onClick={onOpenCV} style={{...lnk,background:'none',border:'none',cursor:'pointer',padding:0}} onMouseEnter={e=>e.currentTarget.style.color='rgba(255,50,80,0.9)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(0,185,255,0.75)'}>▸ CURRICULUM VITAE ↗</button></div>}
+  </>;
 }
 
 const PANELS = [PAbout, PCompany, PChaos, PSkills, PExperience, PSchool, PContact];
@@ -1326,7 +1391,7 @@ const PANELS = [PAbout, PCompany, PChaos, PSkills, PExperience, PSchool, PContac
 // ─────────────────────────────────────────────────────────────────
 // DETAIL PANEL — slide depuis la droite
 // ─────────────────────────────────────────────────────────────────
-function DetailPanel({ secIdx, open, onClose }: { secIdx:number; open:boolean; onClose:()=>void }) {
+function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secIdx:number; open:boolean; onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void }) {
   const s = SECTIONS[secIdx];
   const PC = PANELS[secIdx];
   
@@ -1434,12 +1499,413 @@ function DetailPanel({ secIdx, open, onClose }: { secIdx:number; open:boolean; o
         </p>
         
         {/* Zone de contenu principale */}
-        <div style={{ 
-          borderTop:`1px dashed ${activeColor}22`, 
+        <div style={{
+          borderTop:`1px dashed ${activeColor}22`,
           paddingTop:'2rem',
           position: 'relative'
         }}>
-          <PC />
+          {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} /> : <PC />}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TERMINAL
+// ─────────────────────────────────────────────────────────────────
+function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'cv'|'rapport' } {
+  const parts = raw.trim().split(/\s+/);
+  const cmd   = parts[0].toLowerCase();
+  const arg   = parts[1] ?? '';
+  switch (cmd) {
+    case 'help': return { lines: [
+      '  whoami            → identité',
+      '  ls                → sections du portfolio',
+      '  cat cv.txt        → ouvrir le CV',
+      '  cat rapport.txt   → rapport de fabrication',
+      '  cat about.txt     → à propos',
+      '  cat chaos.txt     → projet Chaos',
+      '  ping hc.fr        → infos alternance',
+      '  breach            → ???',
+      '  clear             → vider le terminal',
+      '  exit              → fermer  [ESC]',
+    ]};
+    case 'whoami': return { lines: [
+      'Coline Derycke — Dev · Infra · Sécu',
+      'BTS SIO SLAM · alternance @ Human\'s Connexion (Toulouse)',
+      '→ coline.derycke@gmail.com',
+    ]};
+    case 'ls': return { lines: [
+      'total 7',
+      'drwxr-xr-x  01_about/    02_company/    03_chaos/',
+      'drwxr-xr-x  04_skills/   05_experience/ 06_school/',
+      'drwxr-xr-x  07_contact/',
+      '-rw-r--r--  cv.txt   rapport.txt   about.txt   chaos.txt',
+    ]};
+    case 'cat':
+      if (!arg)              return { lines: ['usage : cat <fichier>'] };
+      if (arg==='cv.txt')       return { lines: ['[Ouverture du CV…]'],                    action:'cv' };
+      if (arg==='rapport.txt')  return { lines: ['[Ouverture du rapport de fabrication…]'], action:'rapport' };
+      if (arg==='about.txt') return { lines: [
+        'Développeuse passionnée par le code, l\'infra et la sécurité.',
+        'J\'aime construire des systèmes complets, du serveur au frontend.',
+        'Actuellement en BTS SIO SLAM 2ème année (alternance).',
+        'Recherche alternance à partir de septembre 2027.',
+        '→ École d\'ingénieur ou MIAGE',
+      ]};
+      if (arg==='chaos.txt') return { lines: [
+        '╔══ CHAOS — Chat communautaire chiffré ══╗',
+        '  Infra  : Proxmox · 2 LXC (dev/prod) · Docker · Nginx',
+        '  Back   : Node.js · PostgreSQL · WebRTC · Double Ratchet E2E',
+        '  Front  : HTML/CSS/JS → React + Tailwind (Talos)',
+        '  Sécu   : XSS/SQLi · hachage · OAuth Google',
+        '→ https://chaos.colinederycke-portfolio.com/',
+      ]};
+      return { lines: [`cat: ${arg}: No such file or directory`] };
+    case 'ping':
+      if (arg.includes('hc') || arg.includes('human')) return { lines: [
+        `PING hc.fr — Human's Connexion (Toulouse)`,
+        'Poste    : Technicienne systèmes & réseaux',
+        'Missions : AD · Cloud Microsoft · Infogérance · Sécu réseau',
+        'Durée    : 2025 → en cours (alternance BTS SIO)',
+        '64 bytes from hc.fr : connexion établie.',
+      ]};
+      return { lines: [`ping: ${arg||'...'}: Name or service not known`] };
+    case 'breach': return { lines: [
+      '[ VOODOO BOYS — BREACH PROTOCOL ]',
+      'ICE détecté. Séquence d\'activation requise.',
+      '',
+      '  ↑ ↑ ↓ ↓ ← → ← → B A',
+      '',
+      '[ Entre la séquence sur ton clavier… ]',
+    ]};
+    case 'clear': return { lines: [], action:'clear' };
+    case 'exit':  return { lines: [], action:'close' };
+    case '':      return { lines: [] };
+    default:      return { lines: [`bash: ${cmd}: command not found — tape 'help'`] };
+  }
+}
+
+type TermLine = { type:'cmd'|'out'; text:string };
+
+function Terminal({ onClose, onOpenCV, onOpenRapport }: { onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void }) {
+  const [history, setHistory] = useState<TermLine[]>([
+    { type:'out', text:'╔══════════════════════════════════════════╗' },
+    { type:'out', text:'║  CYBERSPACE TERMINAL  v1.0.0              ║' },
+    { type:'out', text:'║  tape  "help"  pour voir les commandes    ║' },
+    { type:'out', text:'╚══════════════════════════════════════════╝' },
+  ]);
+  const [input,   setInput]   = useState('');
+  const [cmdHist, setCmdHist] = useState<string[]>([]);
+  const [hIdx,    setHIdx]    = useState(-1);
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => { bottomRef.current?.scrollIntoView(); }, [history]);
+
+  const submit = () => {
+    const raw = input.trim();
+    const cmdLine: TermLine = { type:'cmd', text:`coline@cyberspace:~$ ${raw}` };
+    const { lines, action } = processCmd(raw);
+
+    if (action === 'clear') { setHistory([]);  setInput(''); return; }
+    if (action === 'close') { onClose();                     return; }
+
+    setHistory(h => [...h, cmdLine, ...lines.map(t=>({ type:'out' as const, text:t }))]);
+    if (raw) setCmdHist(h => [raw, ...h]);
+    setHIdx(-1);
+    setInput('');
+    if (action === 'cv')      setTimeout(onOpenCV,      280);
+    if (action === 'rapport') setTimeout(onOpenRapport, 280);
+  };
+
+  const onKD = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter')  { submit(); return; }
+    if (e.key === 'Escape') { onClose(); return; }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const n = Math.min(hIdx+1, cmdHist.length-1);
+      setHIdx(n); setInput(cmdHist[n]??'');
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const n = Math.max(hIdx-1, -1);
+      setHIdx(n); setInput(n<0?'':cmdHist[n]);
+    }
+  };
+
+  return (
+    <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:100, height:'44vh',
+      background:'rgba(0,2,8,0.97)', backdropFilter:'blur(20px)',
+      borderBottom:'2px solid rgba(0,185,255,0.28)',
+      boxShadow:'0 8px 60px rgba(0,185,255,0.14)',
+      display:'flex', flexDirection:'column',
+      animation:'termSlideDown 0.32s cubic-bezier(0.16,1,0.3,1)',
+      fontFamily:'monospace' }}>
+
+      {/* Barre titre */}
+      <div style={{ padding:'0.42rem 1rem', borderBottom:'1px solid rgba(0,185,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,185,255,0.03)' }}>
+        <span style={{ fontSize:'0.55rem', letterSpacing:'0.5em', color:'rgba(0,185,255,0.55)', textTransform:'uppercase' }}>
+          ▸ CYBERSPACE TERMINAL — coline@cyberspace:~
+        </span>
+        <button onClick={onClose}
+          style={{ background:'none', border:'none', color:'rgba(0,185,255,0.4)', cursor:'pointer', fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.35em', textTransform:'uppercase' }}
+          onMouseEnter={e=>e.currentTarget.style.color='rgba(255,50,80,0.85)'}
+          onMouseLeave={e=>e.currentTarget.style.color='rgba(0,185,255,0.4)'}>
+          [ESC] ✕
+        </button>
+      </div>
+
+      {/* Output */}
+      <div onClick={()=>inputRef.current?.focus()}
+        style={{ flex:1, overflowY:'auto', padding:'0.6rem 1.2rem', cursor:'text' }}>
+        {history.map((line,i) => (
+          <div key={i} style={{ fontSize:'0.7rem', lineHeight:1.75,
+            color: line.type==='cmd' ? '#ddeeff' : 'rgba(0,185,255,0.82)',
+            whiteSpace:'pre', fontFamily:'monospace' }}>
+            {line.text}
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Saisie */}
+      <div style={{ padding:'0.4rem 1.2rem', borderTop:'1px solid rgba(0,185,255,0.1)', display:'flex', alignItems:'center', gap:'0.6rem' }}>
+        <span style={{ fontSize:'0.7rem', color:'rgba(0,185,255,0.55)', whiteSpace:'nowrap' }}>coline@cyberspace:~$</span>
+        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKD}
+          style={{ flex:1, background:'none', border:'none', outline:'none', fontFamily:'monospace', fontSize:'0.7rem', color:'#ddeeff', caretColor:'rgba(0,185,255,0.9)' }}
+          autoComplete="off" spellCheck={false} autoCapitalize="none" />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CV MODAL
+// ─────────────────────────────────────────────────────────────────
+function CVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [imgError, setImgError] = useState(false);
+  if (!open) return null;
+  return (
+    <>
+      {/* Overlay */}
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:80, background:'rgba(0,1,5,0.65)', backdropFilter:'blur(8px)' }} />
+
+      {/* Panneau centré */}
+      <div style={{ position:'fixed', inset:0, zIndex:90, display:'flex', alignItems:'center', justifyContent:'center', padding:'1.5rem', pointerEvents:'none' }}>
+        <div style={{ pointerEvents:'auto', width:'100%', maxWidth:620, maxHeight:'90vh', display:'flex', flexDirection:'column',
+          background:'rgba(0,4,16,0.97)', border:'1px solid rgba(0,185,255,0.2)',
+          boxShadow:'0 0 60px rgba(0,185,255,0.1), 0 0 120px rgba(0,185,255,0.04)',
+          backdropFilter:'blur(24px)', position:'relative' }}>
+
+          {/* Coins HUD */}
+          {(['tl','tr','bl','br'] as const).map(p => <Corner key={p} p={p} />)}
+
+          {/* En-tête */}
+          <div style={{ padding:'1.5rem 2rem 1rem', borderBottom:'1px solid rgba(0,185,255,0.08)', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <p style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.7em', color:'rgba(0,185,255,0.35)', textTransform:'uppercase', marginBottom:'0.3rem' }}>DATA_STREAM // 08 ——</p>
+              <h2 style={{ fontSize:'1.2rem', fontWeight:700, color:'#ddeeff', letterSpacing:'-0.02em' }}>Curriculum Vitae</h2>
+              <p style={{ ...mono, fontSize:'0.58rem', color:'rgba(0,185,255,0.4)', letterSpacing:'0.4em', textTransform:'uppercase', marginTop:'0.2rem' }}>Coline Derycke</p>
+            </div>
+            <button onClick={onClose}
+              style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.35em', textTransform:'uppercase', padding:'0.3rem 0.7rem', cursor:'pointer', color:'rgba(0,185,255,0.55)', background:'rgba(0,12,32,0.6)', border:'1px solid rgba(0,185,255,0.2)', transition:'all 0.2s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,50,80,0.9)',borderColor:'rgba(255,30,60,0.4)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.55)',borderColor:'rgba(0,185,255,0.2)'})}>
+              ✕ FERMER
+            </button>
+          </div>
+
+          {/* Preview */}
+          <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem' }}>
+            {imgError ? (
+              <div style={{ textAlign:'center', padding:'4rem 2rem', color:'rgba(0,185,255,0.4)', fontFamily:'monospace', fontSize:'0.68rem', letterSpacing:'0.3em' }}>
+                [ CV bientôt disponible ]
+              </div>
+            ) : (
+              <img src="/cv.png" alt="CV de Coline Derycke"
+                onError={() => setImgError(true)}
+                style={{ width:'100%', height:'auto', display:'block', border:'1px solid rgba(0,185,255,0.08)' }} />
+            )}
+          </div>
+
+          {/* Footer téléchargement */}
+          <div style={{ padding:'1rem 2rem 1.5rem', borderTop:'1px solid rgba(0,185,255,0.08)', display:'flex', justifyContent:'flex-end' }}>
+            <a href="/cv.pdf" download="CV_Coline_Derycke.pdf"
+              style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.4em', textTransform:'uppercase', padding:'0.5rem 1.2rem', color:'rgba(0,185,255,0.85)', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,140,255,0.28)', textDecoration:'none', transition:'all 0.25s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(0,185,255,0.6)',boxShadow:'0 0 18px rgba(0,185,255,0.2)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.85)',borderColor:'rgba(0,140,255,0.28)',boxShadow:'none'})}>
+              ↓ TÉLÉCHARGER PDF
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+
+const BREACH_MSG = [
+  'IDENTIFICANT : Coline Derycke — Netrunner',
+  'STATUT       : BTS SIO SLAM · Alternance active',
+  'CLEARANCE    : VOODOO BOYS [ACCORDÉ]',
+  '',
+  'Tu viens de trouver la backdoor.',
+  'Bonne pioche — peu de gens vont aussi loin.',
+].join('\n');
+
+function BreachModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [phase,    setPhase]    = useState(0);
+  const [hexLines, setHexLines] = useState<string[]>([]);
+  const [msgChars, setMsgChars] = useState(0);
+
+  useEffect(() => {
+    if (!open) { setPhase(0); setHexLines([]); setMsgChars(0); return; }
+    const t1 = setTimeout(() => setPhase(1), 300);
+    const t2 = setTimeout(() => setPhase(2), 1100);
+    const t3 = setTimeout(() => setPhase(3), 3200);
+    return () => { [t1,t2,t3].forEach(clearTimeout); };
+  }, [open]);
+
+  useEffect(() => {
+    if (phase !== 2) return;
+    const gen = () => Array.from({length:20}, () => Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase()).join(' ');
+    const iv = setInterval(() => setHexLines(p => [...p.slice(-9), gen()]), 95);
+    return () => clearInterval(iv);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase < 3) return;
+    const iv = setInterval(() => setMsgChars(n => {
+      if (n >= BREACH_MSG.length) { clearInterval(iv); return n; }
+      return n + 2;
+    }), 38);
+    return () => clearInterval(iv);
+  }, [phase]);
+
+  if (!open) return null;
+
+  const red  = 'rgba(255,30,55,0.9)';
+  const red2 = 'rgba(255,30,55,0.35)';
+  const dim  = 'rgba(255,30,55,0.18)';
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,2,0.97)', fontFamily:'monospace', cursor:'pointer', overflow:'hidden',
+      animation:'breachFlicker 3s ease infinite' }}>
+
+      {/* Scanlines rouges */}
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none',
+        background:'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,20,40,0.028) 2px,rgba(255,20,40,0.028) 3px)' }} />
+
+      {/* Coins rouges */}
+      {(['tl','tr','bl','br'] as const).map(p => {
+        const s: CSSProperties = { position:'absolute', width:32, height:32, borderColor:red2, borderStyle:'solid', borderTopWidth:0, borderRightWidth:0, borderBottomWidth:0, borderLeftWidth:0 };
+        if (p==='tl') { s.top=24; s.left=24; s.borderTopWidth=2; s.borderLeftWidth=2; }
+        if (p==='tr') { s.top=24; s.right=24; s.borderTopWidth=2; s.borderRightWidth=2; }
+        if (p==='bl') { s.bottom=24; s.left=24; s.borderBottomWidth=2; s.borderLeftWidth=2; }
+        if (p==='br') { s.bottom=24; s.right=24; s.borderBottomWidth=2; s.borderRightWidth=2; }
+        return <div key={p} style={s} />;
+      })}
+
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:'1.2rem', padding:'2rem', maxWidth:640, margin:'0 auto' }}>
+
+        {/* En-tête */}
+        <div style={{ textAlign:'center' }}>
+          <p style={{ fontSize:'0.45rem', letterSpacing:'0.9em', color:dim, marginBottom:'0.6rem' }}>[ VOODOO BOYS NETWORK — ACCÈS NON AUTORISÉ ]</p>
+          <h1 style={{ fontSize:'clamp(1.8rem,5vw,3rem)', fontWeight:900, letterSpacing:'0.05em', color:red, textShadow:`0 0 40px rgba(255,30,55,0.5)` }}>BREACH PROTOCOL</h1>
+          <p style={{ fontSize:'0.42rem', letterSpacing:'0.7em', color:red2, marginTop:'0.3rem' }}>V . 2 0 7 7</p>
+        </div>
+
+        {/* Phase 1 — barre de progression */}
+        {phase >= 1 && phase < 3 && (
+          <div style={{ width:'100%', maxWidth:420 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.48rem', letterSpacing:'0.4em', color:red2, marginBottom:'0.4rem' }}>
+              <span>CONTOURNEMENT ICE</span>
+              <span>{phase >= 2 ? '██ EN COURS' : '▌ INIT...'}</span>
+            </div>
+            <div style={{ width:'100%', height:3, background:'rgba(255,30,55,0.12)', position:'relative', overflow:'hidden' }}>
+              <div style={{ position:'absolute', left:0, top:0, height:'100%', background:`linear-gradient(90deg,${dim},${red})`,
+                boxShadow:`0 0 12px rgba(255,30,55,0.6)`,
+                animation:'breachBar 2s ease forwards' }} />
+            </div>
+          </div>
+        )}
+
+        {/* Phase 2 — cascade hex */}
+        {phase === 2 && (
+          <pre style={{ fontSize:'0.52rem', color:'rgba(255,30,55,0.28)', lineHeight:1.6, letterSpacing:'0.1em', userSelect:'none', width:'100%', maxWidth:480, overflow:'hidden' }}>
+            {hexLines.join('\n')}
+          </pre>
+        )}
+
+        {/* Phase 3 — message */}
+        {phase >= 3 && (
+          <div style={{ width:'100%', maxWidth:480 }}>
+            <p style={{ fontSize:'0.55rem', letterSpacing:'0.6em', color:'rgba(0,255,140,0.7)', marginBottom:'1.2rem', textShadow:'0 0 18px rgba(0,255,140,0.4)' }}>
+              ██ ICE DÉFAIT — ACCÈS ACCORDÉ
+            </p>
+            <pre style={{ fontSize:'0.72rem', color:'rgba(255,200,200,0.75)', lineHeight:1.8, whiteSpace:'pre-wrap', letterSpacing:'0.01em' }}>
+              {BREACH_MSG.slice(0, msgChars)}
+              <span style={{ animation:'scrollHintPulse 0.8s ease infinite' }}>▌</span>
+            </pre>
+          </div>
+        )}
+
+        <p style={{ position:'absolute', bottom:'1.8rem', fontSize:'0.42rem', letterSpacing:'0.55em', color:'rgba(255,30,55,0.2)', textTransform:'uppercase' }}>
+          Cliquer pour fermer
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RapportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [imgError, setImgError] = useState(false);
+  if (!open) return null;
+  return (
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:80, background:'rgba(0,1,5,0.65)', backdropFilter:'blur(8px)' }} />
+      <div style={{ position:'fixed', inset:0, zIndex:90, display:'flex', alignItems:'center', justifyContent:'center', padding:'1.5rem', pointerEvents:'none' }}>
+        <div style={{ pointerEvents:'auto', width:'100%', maxWidth:620, maxHeight:'90vh', display:'flex', flexDirection:'column',
+          background:'rgba(0,4,16,0.97)', border:'1px solid rgba(0,200,180,0.2)',
+          boxShadow:'0 0 60px rgba(0,200,180,0.08), 0 0 120px rgba(0,200,180,0.03)',
+          backdropFilter:'blur(24px)', position:'relative' }}>
+          {(['tl','tr','bl','br'] as const).map(p => <Corner key={p} p={p} />)}
+          <div style={{ padding:'1.5rem 2rem 1rem', borderBottom:'1px solid rgba(0,200,180,0.08)', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <p style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.7em', color:'rgba(0,200,180,0.35)', textTransform:'uppercase', marginBottom:'0.3rem' }}>DATA_STREAM // 09 ——</p>
+              <h2 style={{ fontSize:'1.2rem', fontWeight:700, color:'#ddeeff', letterSpacing:'-0.02em' }}>Rapport de fabrication</h2>
+              <p style={{ ...mono, fontSize:'0.58rem', color:'rgba(0,200,180,0.4)', letterSpacing:'0.4em', textTransform:'uppercase', marginTop:'0.2rem' }}>BTS SIO · Portfolio</p>
+            </div>
+            <button onClick={onClose}
+              style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.35em', textTransform:'uppercase', padding:'0.3rem 0.7rem', cursor:'pointer', color:'rgba(0,200,180,0.55)', background:'rgba(0,12,32,0.6)', border:'1px solid rgba(0,200,180,0.2)', transition:'all 0.2s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,50,80,0.9)',borderColor:'rgba(255,30,60,0.4)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,200,180,0.55)',borderColor:'rgba(0,200,180,0.2)'})}>
+              ✕ FERMER
+            </button>
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem' }}>
+            {imgError ? (
+              <div style={{ textAlign:'center', padding:'4rem 2rem', color:'rgba(0,200,180,0.4)', fontFamily:'monospace', fontSize:'0.68rem', letterSpacing:'0.3em' }}>
+                [ Rapport bientôt disponible ]
+              </div>
+            ) : (
+              <img src="/rapport.png" alt="Rapport de fabrication"
+                onError={() => setImgError(true)}
+                style={{ width:'100%', height:'auto', display:'block', border:'1px solid rgba(0,200,180,0.08)' }} />
+            )}
+          </div>
+          <div style={{ padding:'1rem 2rem 1.5rem', borderTop:'1px solid rgba(0,200,180,0.08)', display:'flex', justifyContent:'flex-end' }}>
+            <a href="/rapport.pdf" download="Rapport_Fabrication_Coline_Derycke.pdf"
+              style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.4em', textTransform:'uppercase', padding:'0.5rem 1.2rem', color:'rgba(0,200,180,0.85)', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,200,180,0.28)', textDecoration:'none', transition:'all 0.25s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(0,200,180,0.6)',boxShadow:'0 0 18px rgba(0,200,180,0.2)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,200,180,0.85)',borderColor:'rgba(0,200,180,0.28)',boxShadow:'none'})}>
+              ↓ TÉLÉCHARGER PDF
+            </a>
+          </div>
         </div>
       </div>
     </>
@@ -1449,7 +1915,7 @@ function DetailPanel({ secIdx, open, onClose }: { secIdx:number; open:boolean; o
 // ─────────────────────────────────────────────────────────────────
 // EXPORT
 // ─────────────────────────────────────────────────────────────────
-export default function PortfolioMain() {
+export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
   const zoneRef     = useRef<HTMLDivElement>(null);
   const scrollRef   = useRef<ScrollData>({ section:0, progress:0 });
 
@@ -1458,15 +1924,35 @@ export default function PortfolioMain() {
   const [totalProg, setTotalProg] = useState(0);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelSec,  setPanelSec]  = useState(0);
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const [lightMode,   setLightMode]   = useState(false);
+  const [cvOpen,      setCvOpen]      = useState(false);
+  const [rapportOpen, setRapportOpen] = useState(false);
+  const [breachOpen,  setBreachOpen]  = useState(false);
+  const [termOpen,    setTermOpen]    = useState(false);
+  const termOpenRef  = useRef(false);
+  const konamiIdxRef = useRef(0);
+  useEffect(() => { termOpenRef.current = termOpen; }, [termOpen]);
+
+  const scrollToSection = useCallback((i: number) => {
+    const zone = zoneRef.current;
+    if (!zone) return;
+    const totalScroll = zone.offsetHeight - window.innerHeight;
+    // +0.5 pour atterrir au milieu de la section : évite la limite flottante
+    // et le texte est pleinement visible (fade-in terminé à sp>0.16)
+    window.scrollTo({ top: zone.offsetTop + ((i + 0.5) / N_SEC) * totalScroll, behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = 'auto';
+    let lastHashIdx = -1;
     const onScroll = () => {
       const zone = zoneRef.current;
       if (!zone) return;
       const rect     = zone.getBoundingClientRect();
       const scroll   = zone.offsetHeight - window.innerHeight;
       const prog     = Math.max(0, Math.min(1, -rect.top / scroll));
+      if (prog > 0.01) setHasScrolled(true);
       const raw      = prog * N_SEC;
       const idx      = Math.min(N_SEC - 1, Math.floor(raw));
       const secProg  = raw - idx;
@@ -1474,16 +1960,50 @@ export default function PortfolioMain() {
       setActive(idx);
       setSp(secProg);
       setTotalProg(prog);
+      if (idx !== lastHashIdx) {
+        lastHashIdx = idx;
+        history.replaceState(null, '', '#' + SECTIONS[idx].id);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === '`') { e.preventDefault(); setTermOpen(p => !p); return; }
+      // Détection Konami (fonctionne même terminal ouvert)
+      if (e.key === KONAMI[konamiIdxRef.current]) {
+        konamiIdxRef.current++;
+        if (konamiIdxRef.current === KONAMI.length) {
+          konamiIdxRef.current = 0;
+          setBreachOpen(true);
+        }
+      } else {
+        konamiIdxRef.current = e.key === KONAMI[0] ? 1 : 0;
+      }
+      if (termOpenRef.current) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); scrollToSection(Math.min(N_SEC-1, scrollRef.current.section + 1)); }
+      if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  { e.preventDefault(); scrollToSection(Math.max(0,          scrollRef.current.section - 1)); }
     };
     window.addEventListener('scroll', onScroll, { passive:true });
-    return () => { document.body.style.overflow='hidden'; window.removeEventListener('scroll', onScroll); };
+    window.addEventListener('keydown', onKey);
+    const hash = window.location.hash.slice(1);
+    const hashIdx = SECTIONS.findIndex(s => s.id === hash);
+    if (hashIdx !== -1) setTimeout(() => scrollToSection(hashIdx), 100);
+    return () => { document.body.style.overflow='hidden'; window.removeEventListener('scroll', onScroll); window.removeEventListener('keydown', onKey); };
   }, []);
+
+  if (lightMode) return (
+    <>
+      <LightMode onBack={onBack} onHeavy={() => setLightMode(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} />
+      <CVModal open={cvOpen} onClose={() => setCvOpen(false)} />
+      <RapportModal open={rapportOpen} onClose={() => setRapportOpen(false)} />
+      <BreachModal open={breachOpen} onClose={() => setBreachOpen(false)} />
+      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} />}
+    </>
+  );
 
   return (
     <div style={{ background:'#000208' }}>
 
-      {/* Canvas fixe */}
-      <div style={{ position:'fixed', inset:0, zIndex:0 }}>
+      {/* Canvas fixe — aria-hidden : purement décoratif, les lecteurs d'écran l'ignorent */}
+      <div aria-hidden="true" style={{ position:'fixed', inset:0, zIndex:0 }}>
         <Canvas camera={{ position:[0,0,5], fov:72 }} gl={{ antialias:true, alpha:true }}
           onCreated={({ gl }) => gl.setClearColor(0,0)}>
           <DenseField scrollRef={scrollRef} />
@@ -1509,6 +2029,20 @@ export default function PortfolioMain() {
             CYBERSPACE ▸ NODE 7743 ▸ {SECTIONS[active].num}
           </div>
 
+          {/* Indicateur scroll initial */}
+          <div style={{
+            position:'absolute', bottom:'12vh', left:'50%',
+            opacity: hasScrolled ? 0 : 1,
+            transition: hasScrolled ? 'opacity 0.6s ease' : 'none',
+            animation: hasScrolled ? 'none' : 'scrollHintFadeIn 0.8s ease 1.4s both, scrollHintBounce 1.6s ease-in-out 2.2s infinite',
+            pointerEvents:'none', textAlign:'center',
+          }}>
+            <div style={{ fontFamily:'monospace', fontSize:'0.68rem', letterSpacing:'0.65em', color:'rgba(0,185,255,0.7)', textTransform:'uppercase', marginBottom:'0.6rem', animation: hasScrolled ? 'none' : 'scrollHintPulse 2s ease-in-out 2.2s infinite' }}>
+              SCROLL
+            </div>
+            <div style={{ color:'rgba(0,185,255,0.7)', fontSize:'1.4rem', lineHeight:1, animation: hasScrolled ? 'none' : 'scrollHintPulse 2s ease-in-out 2.2s infinite' }}>↓</div>
+          </div>
+
           {/* Contenu section courante */}
           <SectionText
             section={SECTIONS[active]}
@@ -1516,14 +2050,50 @@ export default function PortfolioMain() {
             onOpen={() => { setPanelSec(active); setPanelOpen(true); }}
           />
 
+          {/* Boutons HUD haut-droit */}
+          <div style={{ position:'absolute', top:22, right:54, display:'flex', gap:'0.4rem', zIndex:10 }}>
+            <button onClick={() => setTermOpen(t => !t)}
+              style={{ fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.35em', textTransform:'uppercase', padding:'0.28rem 0.65rem', cursor:'pointer', color: termOpen ? 'rgba(0,185,255,0.95)' : 'rgba(0,185,255,0.5)', background: termOpen ? 'rgba(0,185,255,0.08)' : 'rgba(0,8,22,0.55)', backdropFilter:'blur(4px)', border:`1px solid ${termOpen ? 'rgba(0,185,255,0.4)' : 'rgba(0,140,255,0.16)'}`, transition:'all 0.2s' }}
+              onMouseEnter={e => Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.95)',borderColor:'rgba(0,185,255,0.4)'})}
+              onMouseLeave={e => { if (!termOpen) Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.5)',borderColor:'rgba(0,140,255,0.16)'}); }}>
+              {'>'}_ CLI
+            </button>
+            <button onClick={() => setLightMode(true)}
+              style={{ fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.45em', textTransform:'uppercase', padding:'0.28rem 0.65rem', cursor:'pointer', color:'rgba(0,185,255,0.5)', background:'rgba(0,8,22,0.55)', backdropFilter:'blur(4px)', border:'1px solid rgba(0,140,255,0.16)', transition:'all 0.2s' }}
+              onMouseEnter={e => Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.95)',borderColor:'rgba(0,185,255,0.4)'})}
+              onMouseLeave={e => Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.5)',borderColor:'rgba(0,140,255,0.16)'})}>
+              LITE
+            </button>
+            {onBack && (
+              <button onClick={onBack}
+                style={{ fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.45em', textTransform:'uppercase', padding:'0.28rem 0.65rem', cursor:'pointer', color:'rgba(0,185,255,0.5)', background:'rgba(0,8,22,0.55)', backdropFilter:'blur(4px)', border:'1px solid rgba(0,140,255,0.16)', transition:'all 0.2s' }}
+                onMouseEnter={e => Object.assign(e.currentTarget.style,{color:'rgba(255,50,80,0.9)',borderColor:'rgba(255,30,60,0.38)'})}
+                onMouseLeave={e => Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.5)',borderColor:'rgba(0,140,255,0.16)'})}>
+                ← ACCUEIL
+              </button>
+            )}
+          </div>
+
           {/* Timeline en bas */}
-          <Timeline active={active} total={totalProg} />
+          <Timeline active={active} total={totalProg} onJump={scrollToSection} />
 
         </div>
       </div>
 
       {/* Panel détail */}
-      <DetailPanel secIdx={panelSec} open={panelOpen} onClose={() => setPanelOpen(false)} />
+      <DetailPanel secIdx={panelSec} open={panelOpen} onClose={() => setPanelOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} />
+
+      {/* CV modal */}
+      <CVModal open={cvOpen} onClose={() => setCvOpen(false)} />
+
+      {/* Rapport modal */}
+      <RapportModal open={rapportOpen} onClose={() => setRapportOpen(false)} />
+
+      {/* Breach easter egg */}
+      <BreachModal open={breachOpen} onClose={() => setBreachOpen(false)} />
+
+      {/* Terminal */}
+      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} />}
 
     </div>
   );
