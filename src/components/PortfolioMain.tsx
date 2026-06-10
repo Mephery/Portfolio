@@ -1410,23 +1410,84 @@ function PExperience() {
 }
 function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
   const projs = [
-    { title:'Clone Netflix',          tech:['HTML','CSS','JavaScript'], desc:"Reproduction fidèle de l'interface Netflix : hero animé, carousels de contenus, design responsive. Exercice de CSS avancé et manipulation du DOM." },
-    { title:'Pomodoro',               tech:['HTML','CSS','JavaScript'], desc:'Timer Pomodoro avec cycles travail/pause configurables, notifications sonores et suivi de sessions. Interface soignée autour de la gestion du temps.' },
-    { title:'Typing Speed Challenge', tech:['React'],               desc:"Test de vitesse de frappe avec statistiques en temps réel. Options au choix pour l'esthétique et la difficulté" },
+    {
+      title: 'Clone Netflix',
+      tech: ['HTML','CSS','JavaScript'],
+      desc: "Reproduction fidèle de l'interface Netflix : hero animé, carousels de contenus, design responsive. Exercice de CSS avancé et manipulation du DOM.",
+      img: `${import.meta.env.BASE_URL}projects/netflix-screenshot.png`,
+      github: 'https://github.com/Mephery/Projet-Netflix',
+      live: 'https://netflix.colinederycke-portfolio.com/',
+    },
+    {
+      title: 'Pomodoro',
+      tech: ['HTML','CSS','JavaScript'],
+      desc: 'Timer Pomodoro avec cycles travail/pause configurables, notifications sonores et suivi de sessions. Interface soignée autour de la gestion du temps.',
+      img: `${import.meta.env.BASE_URL}projects/pomodoro-screenshot.png`,
+      github: 'https://github.com/Mephery/pomodoro',
+      live: 'https://pomodoro.colinederycke-portfolio.com/',
+    },
+    {
+      title: 'Typing Speed Challenge',
+      tech: ['React', 'JavaScript', 'CSS'],
+      desc: "Test de vitesse de frappe avec statistiques en temps réel. Options au choix pour l'esthétique et la difficulté.",
+      img: `${import.meta.env.BASE_URL}projects/Typing-speed-test-screenshot.png`,
+      github: 'https://github.com/Mephery/typing-speed-test',
+      live: 'https://typing-test.colinederycke-portfolio.com/',
+    },
+  ];
+  const netItems = [
+    'Segmentation réseau : VLANs sous Cisco (IOS)',
+    'Administration système : Windows Server, Active Directory',
+    'Firewall & SSH : déploiement PfSense, règles et droits SSH',
+    'Routage & NAT : configuration réseau Cisco',
+    'GLPI : gestion de parc informatique',
+    'CTF Linux : exploitation de vulnérabilités système',
   ];
   const lnk: CSSProperties = { ...mono, fontSize:'0.68rem', letterSpacing:'0.3em', color:'rgba(0,200,180,0.75)', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'none' };
+  const corner = (pos: CSSProperties): CSSProperties => ({
+    position:'absolute', width:8, height:8,
+    borderColor:'rgba(0,200,180,0.5)', borderStyle:'solid', borderWidth:0,
+    ...pos,
+  });
   return (
     <div style={{display:'grid',gap:'1.25rem'}}>
-      {projs.map(({title,tech,desc},n)=>(
+      {projs.map(({title,tech,desc,img,github,live},n)=>(
         <div key={title} style={{padding:'1.25rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}>
+          <div style={{position:'relative',marginBottom:'0.85rem',border:'1px solid rgba(0,185,255,0.15)',background:'rgba(0,8,24,0.8)',overflow:'hidden'}}>
+            <span style={corner({top:4,left:4,borderTopWidth:1,borderLeftWidth:1})}/>
+            <span style={corner({top:4,right:4,borderTopWidth:1,borderRightWidth:1})}/>
+            <span style={corner({bottom:4,left:4,borderBottomWidth:1,borderLeftWidth:1})}/>
+            <span style={corner({bottom:4,right:4,borderBottomWidth:1,borderRightWidth:1})}/>
+            <img src={img} alt={title} style={{display:'block',width:'100%',height:'160px',objectFit:'cover',objectPosition:'top',opacity:0.88}}/>
+          </div>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem'}}>
             <p style={{fontWeight:600,color:'#ddeeff'}}>{title}</p>
             <span style={{...mono,fontSize:'0.52rem',color:'rgba(0,185,255,0.25)',letterSpacing:'0.4em'}}>0{n+1}</span>
           </div>
           <div style={{marginBottom:'0.6rem'}}>{tech.map(t=><span key={t} style={tagStyle}>{t}</span>)}</div>
-          <p style={{...body,color:'rgba(200,220,255,0.55)',fontSize:'0.85rem'}}>{desc}</p>
+          <p style={{...body,color:'rgba(200,220,255,0.55)',fontSize:'0.85rem',marginBottom:'0.75rem'}}>{desc}</p>
+          <div style={{display:'flex',gap:'1.4rem'}}>
+            <a href={github} target="_blank" rel="noopener noreferrer" style={lnk}
+              onMouseEnter={e=>e.currentTarget.style.color='rgba(0,200,180,1)'}
+              onMouseLeave={e=>e.currentTarget.style.color='rgba(0,200,180,0.75)'}>▸ GITHUB ↗</a>
+            <a href={live} target="_blank" rel="noopener noreferrer" style={lnk}
+              onMouseEnter={e=>e.currentTarget.style.color='rgba(0,200,180,1)'}
+              onMouseLeave={e=>e.currentTarget.style.color='rgba(0,200,180,0.75)'}>▸ LIVE ↗</a>
+          </div>
         </div>
       ))}
+
+      <div style={{padding:'1.25rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}>
+        <p style={{...mono,fontSize:'0.55rem',color:'rgba(0,185,255,0.35)',letterSpacing:'0.45em',textTransform:'uppercase',marginBottom:'0.9rem'}}>Réseau &amp; Systèmes</p>
+        <div style={{display:'grid',gap:'0.45rem'}}>
+          {netItems.map(item=>(
+            <p key={item} style={{...body,color:'rgba(200,220,255,0.55)',fontSize:'0.82rem',display:'flex',gap:'0.5rem'}}>
+              <span style={{color:'rgba(0,200,180,0.45)',flexShrink:0}}>▸</span>{item}
+            </p>
+          ))}
+        </div>
+      </div>
+
       {onOpenRapport && (
         <div style={{marginTop:'0.25rem'}}>
           <button onClick={onOpenRapport} style={lnk}
