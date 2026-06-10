@@ -1114,24 +1114,25 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
       if (attr) { gpuBuf.set(allTargets[section]); attr.needsUpdate = true; }
     }
 
-    const morphT = sp < 0.35 ? sp/0.35 : sp > 0.65 ? 1-(sp-0.65)/0.35 : 1.0;
-    const forming = morphT >= prevMorphT.current - 0.0005 ? 1.0 : 0.0;
-    prevMorphT.current = morphT;
+    const uSection = section + sp;
+    const uMorphT  = sp < 0.35 ? sp/0.35 : sp > 0.65 ? 1-(sp-0.65)/0.35 : 1.0;
+    const forming  = uMorphT >= prevMorphT.current - 0.0005 ? 1.0 : 0.0;
+    prevMorphT.current = uMorphT;
 
     mat.uniforms.uTime.value    = clock.getElapsedTime();
     mat.uniforms.uMouse.value.copy(mouseNDCRef.current);
-    mat.uniforms.uSection.value = section + sp;
-    mat.uniforms.uMorphT.value  = morphT;
+    mat.uniforms.uSection.value = uSection;
+    mat.uniforms.uMorphT.value  = uMorphT;
     mat.uniforms.uForming.value = forming;
     lorenzLineMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
-    lorenzLineMat.uniforms.uSection.value = mat.uniforms.uSection.value;
-    lorenzLineMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
+    lorenzLineMat.uniforms.uSection.value = uSection;
+    lorenzLineMat.uniforms.uMorphT.value  = uMorphT;
     atomRingMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
-    atomRingMat.uniforms.uSection.value = mat.uniforms.uSection.value;
-    atomRingMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
+    atomRingMat.uniforms.uSection.value = uSection;
+    atomRingMat.uniforms.uMorphT.value  = uMorphT;
     electronMat.uniforms.uTime.value    = mat.uniforms.uTime.value;
-    electronMat.uniforms.uSection.value = mat.uniforms.uSection.value;
-    electronMat.uniforms.uMorphT.value  = mat.uniforms.uMorphT.value;
+    electronMat.uniforms.uSection.value = uSection;
+    electronMat.uniforms.uMorphT.value  = uMorphT;
   });
 
   return (
@@ -1223,7 +1224,7 @@ function SectionText({ section, sp, onOpen }: {
   const ty  = (1 - op) * 24;
   const isMobile = useIsMobile();
   return (
-    <div style={{ position:'absolute', left: isMobile ? '16px' : 'clamp(28px,6vw,80px)', top:'50%', transform:`translateY(calc(-50% + ${ty}px))`, opacity:op, maxWidth: isMobile ? 'calc(100vw - 32px)' : '44vw', minWidth: isMobile ? undefined : 260, pointerEvents: op>0.3 ? 'auto' : 'none' }}>
+    <div style={{ position:'absolute', left: isMobile ? '16px' : 'clamp(28px,6vw,80px)', top:'50%', transform:`translateY(calc(-50% + ${ty}px))`, opacity:op, maxWidth: isMobile ? 'calc(100vw - 32px)' : '44vw', minWidth: isMobile ? undefined : 260, pointerEvents: op>0.3 ? 'auto' : 'none', transition:'opacity 0.15s ease, transform 0.15s ease' }}>
       <p style={{ fontFamily:'monospace', fontSize:'0.58rem', letterSpacing:'0.7em', color:'rgba(0,185,255,0.38)', marginBottom:'0.5rem', textTransform:'uppercase' }}>
         {section.num} ——
       </p>
@@ -1334,7 +1335,16 @@ Pour moi, le code, l'infrastructure et la sécurité ne sont pas des cases étan
 Mon parcours a commencé dans les lettres, à décortiquer la syntaxe et les structures des textes. Aujourd'hui, j'applique exactement la même curiosité et la même exigence à la logique binaire. En reconversion et actuellement en alternance, je passe mes journées (et pas mal de mes nuits) à apprendre, bidouiller et consolider mes compétences, avec une seule obsession : comprendre l'ensemble du système.</p><div>{['Node.js','React','Three.js','HTML/CSS/JS','Tailwind','Linux','Docker','Proxmox'].map(s=><span key={s} style={tagStyle}>{s}</span>)}</div></>; }
 function PCompany()    {
   const t=['Gestion de parcs & Active Directory','Cloud Microsoft 365','Sécurité infrastructure, conformité RGPD','Stockage, sauvegarde, monitoring','Mises à jour serveurs, support N2/N3'];
-  return <><p style={{...body,marginBottom:'1.5rem'}}>PME toulousaine · consulting IT, progiciels, développement web & logiciel, solutions d'infrastructure réseau sur mesure.</p><p style={{...subLabel,marginBottom:'1rem'}}>Mon rôle · Technicienne systèmes & réseaux</p>{t.map(x=><div key={x} style={{display:'flex',gap:'0.8rem',marginBottom:'0.6rem',color:'rgba(200,220,255,0.65)',fontSize:'0.9rem'}}><span style={{color:'rgba(0,185,255,0.4)',flexShrink:0}}>▸</span>{x}</div>)}</>;
+  return <><p style={{...body,marginBottom:'1.5rem'}}>PME toulousaine · consulting IT, progiciels, développement web & logiciel, solutions d'infrastructure réseau sur mesure.</p>
+    <a href="https://www.humansconnexion.com/" target="_blank" rel="noopener noreferrer"
+      style={{display:'inline-block',marginBottom:'2rem',...mono,fontSize:'0.62rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.55rem 1.25rem',cursor:'pointer',color:'rgba(61,127,255,0.9)',background:'rgba(0,8,30,0.7)',backdropFilter:'blur(8px)',border:'1px solid rgba(61,127,255,0.3)',textDecoration:'none',transition:'all 0.25s'}}
+      onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(61,127,255,0.7)',background:'rgba(0,12,40,0.8)',boxShadow:'0 0 18px rgba(61,127,255,0.25)'})}
+      onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(61,127,255,0.9)',borderColor:'rgba(61,127,255,0.3)',background:'rgba(0,8,30,0.7)',boxShadow:'none'})}>
+      → HUMANSCONNEXION.COM ↗
+    </a>
+    <p style={{...subLabel,marginBottom:'1rem'}}>Mon rôle · Technicienne systèmes & réseaux</p>
+    {t.map(x=><div key={x} style={{display:'flex',gap:'0.8rem',marginBottom:'0.6rem',color:'rgba(200,220,255,0.65)',fontSize:'0.9rem'}}><span style={{color:'rgba(0,185,255,0.4)',flexShrink:0}}>▸</span>{x}</div>)}
+  </>;
 }
 function PChaos()      {
   const s1=['Node.js','HTML/CSS/JS','WebRTC','PostgreSQL','Docker','Proxmox','Nginx','Double Ratchet','OAuth Google'];
@@ -1361,9 +1371,9 @@ function PExperience() {
 }
 function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
   const projs = [
-    { title:'Clone Netflix',          tech:['HTML','CSS','JavaScript'], desc:"Reproduction fidèle de l'interface Netflix — hero animé, carousels de contenus, design responsive. Exercice de CSS avancé et manipulation du DOM." },
+    { title:'Clone Netflix',          tech:['HTML','CSS','JavaScript'], desc:"Reproduction fidèle de l'interface Netflix : hero animé, carousels de contenus, design responsive. Exercice de CSS avancé et manipulation du DOM." },
     { title:'Pomodoro',               tech:['HTML','CSS','JavaScript'], desc:'Timer Pomodoro avec cycles travail/pause configurables, notifications sonores et suivi de sessions. Interface soignée autour de la gestion du temps.' },
-    { title:'Typing Speed Challenge', tech:['À définir'],               desc:'En cours de développement — test de vitesse de frappe avec statistiques en temps réel. Choix du framework encore en cours.' },
+    { title:'Typing Speed Challenge', tech:['React'],               desc:"Test de vitesse de frappe avec statistiques en temps réel. Options au choix pour l'esthétique et la difficulté" },
   ];
   const lnk: CSSProperties = { ...mono, fontSize:'0.68rem', letterSpacing:'0.3em', color:'rgba(0,200,180,0.75)', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'none' };
   return (
@@ -1398,7 +1408,7 @@ function PContact({ onOpenCV }: { onOpenCV?: () => void }) {
   ];
   const lnk: CSSProperties = {...mono,fontSize:'0.68rem',letterSpacing:'0.3em',color:'rgba(0,185,255,0.75)',textDecoration:'none'};
   return <>
-    <p style={{...body,marginBottom:'2rem'}}>Développeuse passionnée par le code, l'infra et la sécurité — j'aime construire des systèmes complets, du serveur au frontend. Actuellement en BTS SIO SLAM 2ème année en alternance, je recherche une <strong style={{color:'rgba(0,185,255,0.85)'}}>alternance à partir de septembre 2027</strong> dans le cadre d'une poursuite d'études (école d'ingénieur ou MIAGE).</p>
+    <p style={{...body,marginBottom:'2rem'}}>Apprentie développeuse passionnée par le code, l'infra et la sécurité, j'aime construire des systèmes complets, du serveur au frontend. Actuellement en BTS SIO SLAM 1ère année en alternance, je recherche une <strong style={{color:'rgba(0,185,255,0.85)'}}>alternance à partir de septembre 2027</strong> dans le cadre d'une poursuite d'études (école d'ingénieur ou MIAGE).</p>
     {l.map(({h,t})=><div key={t} style={{marginBottom:'0.8rem'}}><a href={h} target="_blank" rel="noopener noreferrer" style={lnk} onMouseEnter={e=>e.currentTarget.style.color='rgba(255,50,80,0.9)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(0,185,255,0.75)'}>▸ {t.toUpperCase()}</a></div>)}
     {onOpenCV && <div style={{marginTop:'0.8rem'}}><button onClick={onOpenCV} style={{...lnk,background:'none',border:'none',cursor:'pointer',padding:0}} onMouseEnter={e=>e.currentTarget.style.color='rgba(255,50,80,0.9)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(0,185,255,0.75)'}>▸ CURRICULUM VITAE ↗</button></div>}
   </>;
@@ -1409,121 +1419,177 @@ const PANELS = [PAbout, PCompany, PChaos, PSkills, PExperience, PSchool, PContac
 // ─────────────────────────────────────────────────────────────────
 // DETAIL PANEL — slide depuis la droite
 // ─────────────────────────────────────────────────────────────────
+
+// Applique une transparence à '#hex' ou 'rgba(...)'
+function withAlpha(col: string, a: number): string {
+  const m = col.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (m) return `rgba(${m[1]},${m[2]},${m[3]},${a})`;
+  if (col.startsWith('#')) {
+    const h = col.slice(1);
+    const x3 = h.length === 3;
+    const r = parseInt(x3 ? h[0]+h[0] : h.slice(0,2), 16);
+    const g = parseInt(x3 ? h[1]+h[1] : h.slice(2,4), 16);
+    const b = parseInt(x3 ? h[2]+h[2] : h.slice(4,6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  return col;
+}
 function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secIdx:number; open:boolean; onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void }) {
   const s = SECTIONS[secIdx];
   const PC = PANELS[secIdx];
-  
-  // Couleurs dynamiques selon la section pour une harmonie parfaite
+
+  const [scanKey,        setScanKey]        = useState(0);
+  const [contentVisible, setContentVisible] = useState(false);
+  const [sessionTime,    setSessionTime]    = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setScanKey(k => k + 1);
+      const now = new Date();
+      const p = (n: number) => String(n).padStart(2, '0');
+      setSessionTime(`${now.getFullYear()}-${p(now.getMonth()+1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`);
+      const t = setTimeout(() => setContentVisible(true), 380);
+      return () => clearTimeout(t);
+    } else {
+      setContentVisible(false);
+    }
+  }, [open]);
+
   const colors = [
-    'rgba(0,185,255,0.85)',  // Cyan about
-    'rgba(0,140,255,0.85)',  // Bleu company
-    'rgba(140,60,255,0.85)',  // Violet chaos
-    'rgba(255,50,80,0.85)',   // Rouge skills
-    'rgba(255,110,40,0.85)',  // Orange exp
-    'rgba(0,200,180,0.85)',   // Teal school
-    '#ddeeff'                 // Blanc contact
+    'rgba(0,185,255,0.85)',
+    'rgba(0,140,255,0.85)',
+    'rgba(140,60,255,0.85)',
+    'rgba(255,50,80,0.85)',
+    'rgba(255,110,40,0.85)',
+    'rgba(0,200,180,0.85)',
+    '#ddeeff',
   ];
   const activeColor = colors[secIdx] || 'rgba(0,185,255,0.85)';
   const isMobile = useIsMobile();
+  const wa = (a: number) => withAlpha(activeColor, a);
 
   return (
     <>
-      {/* Overlay de fond assombri */}
       {open && (
-        <div 
-          onClick={onClose} 
-          style={{ 
-            position:'fixed', inset:0, zIndex:40, 
-            background:'rgba(0,1,5,0.45)', backdropFilter:'blur(4px)',
-            transition: 'opacity 0.4s ease'
-          }} 
-        />
+        <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,1,5,0.45)', backdropFilter:'blur(4px)' }} />
       )}
-      
-      {/* Le Panneau Glissant */}
+
       <div style={{
         position:'fixed', top:0, right:0, height:'100vh',
         width: isMobile ? 'min(95vw,680px)' : 'min(52vw,680px)',
-        
-        // Esthétique Cyber : Fond ultra sombre + Scanlines subtiles en CSS
-        background:`
-          linear-gradient(rgba(0, 4, 16, 0.96), rgba(0, 4, 16, 0.96)),
-          linear-gradient(rgba(0,185,255,0.03) 50%, rgba(0,0,0,0) 50%)
-        `,
-        backgroundSize: '100% 100%, 100% 4px', // Crée l'effet lignes CRT de terminal
+        background:`linear-gradient(rgba(0,4,16,0.96),rgba(0,4,16,0.96)),linear-gradient(rgba(0,185,255,0.03) 50%,rgba(0,0,0,0) 50%)`,
+        backgroundSize:'100% 100%,100% 4px',
         backdropFilter:'blur(24px)',
-        
-        // Bordure gauche lumineuse et réactive à la section
         borderLeft:`2px solid ${activeColor}`,
-        boxShadow: open ? `-15px 0 45px rgba(0, 8, 32, 0.85), inset 1px 0 10px ${activeColor}22` : 'none',
-        
+        boxShadow: open ? `-15px 0 45px rgba(0,8,32,0.85),inset 1px 0 10px ${wa(0.13)}` : 'none',
         transform: open ? 'translateX(0)' : 'translateX(100%)',
-        transition:'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1)',
-        zIndex:50, overflowY:'auto',
-        padding: isMobile ? '4rem 1.5rem 3rem' : '5.5rem 3rem 4rem',
+        transition:'transform 0.48s cubic-bezier(0.16,1,0.3,1)',
+        zIndex:50, display:'flex', flexDirection:'column',
       }}>
-        
-        {/* Intégration des cornières HUD à l'intérieur du panneau pour habiller les angles */}
-        <div style={{ position:'absolute', top:25, left:25, width:14, height:14, borderTop:`1px solid ${activeColor}44`, borderLeft:`1px solid ${activeColor}44` }} />
-        <div style={{ position:'absolute', bottom:25, left:25, width:14, height:14, borderBottom:`1px solid ${activeColor}44`, borderLeft:`1px solid ${activeColor}44` }} />
-        <div style={{ position:'absolute', bottom:25, right:25, width:14, height:14, borderBottom:`1px solid ${activeColor}44`, borderRight:`1px solid ${activeColor}44` }} />
 
-        {/* Bouton Fermer façon Terminal d'urgence */}
-        <button 
-          onClick={onClose} 
-          style={{ 
-            position: 'absolute', 
-            top: 25, 
-            right: '3rem',
-            background: 'rgba(0,12,32,0.6)', 
-            border: `1px solid ${activeColor}44`, 
-            color: activeColor, 
-            ...mono, 
-            fontSize: '0.58rem', 
-            letterSpacing: '0.35em', 
-            padding: '6px 14px', 
-            cursor: 'pointer', 
-            transition: 'all 0.2s ease-in-out',
-            boxShadow: `0 0 10px ${activeColor}11`
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,30,60,0.15)';
-            e.currentTarget.style.borderColor = 'rgba(255,50,80,0.85)';
-            e.currentTarget.style.color = '#ff3250';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(0,12,32,0.6)';
-            e.currentTarget.style.borderColor = `${activeColor}44`;
-            e.currentTarget.style.color = activeColor;
-          }}
-        >
-          ⏱ ABORT_SESSION // ✕
-        </button>
+        {/* Zone principale — référent pour les éléments absolus */}
+        <div style={{ flex:1, position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
 
-        {/* En-tête de section style data-stream */}
-        <p style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.7em', color:`${activeColor}66`, marginBottom:'0.6rem', textTransform:'uppercase' }}>
-          DATA_STREAM // {s.num} ——
-        </p>
-        
-        <h2 style={{ 
-          fontSize:'clamp(1.6rem, 3vw, 2.4rem)', fontWeight:700, color:'#ddeeff', 
-          marginBottom:'0.5rem', lineHeight:1.1, letterSpacing: '-0.02em',
-          textShadow: `0 0 30px ${activeColor}44`
-        }}>
-          {s.title}
-        </h2>
-        
-        <p style={{ ...mono, fontSize:'0.65rem', color:'rgba(0,185,255,0.45)', letterSpacing:'0.35em', marginBottom:'2.5rem', textTransform:'uppercase' }}>
-          {s.tagline}
-        </p>
-        
-        {/* Zone de contenu principale */}
+          {/* Scan line horizontale — une seule fois à l'ouverture */}
+          {open && (
+            <div key={scanKey} style={{
+              position:'absolute', left:0, right:0, top:0, height:2,
+              background:`linear-gradient(90deg,transparent,${activeColor},transparent)`,
+              boxShadow:`0 0 14px ${wa(0.60)}`,
+              animation:'panelScan 0.65s ease-out forwards',
+              pointerEvents:'none', zIndex:10,
+            }} />
+          )}
+
+          {/* Cornières HUD */}
+          <div style={{position:'absolute',top:22,left:22,width:14,height:14,borderTop:`1px solid ${wa(0.28)}`,borderLeft:`1px solid ${wa(0.28)}`}} />
+          <div style={{position:'absolute',bottom:22,left:22,width:14,height:14,borderBottom:`1px solid ${wa(0.28)}`,borderLeft:`1px solid ${wa(0.28)}`}} />
+          <div style={{position:'absolute',bottom:22,right:22,width:14,height:14,borderBottom:`1px solid ${wa(0.28)}`,borderRight:`1px solid ${wa(0.28)}`}} />
+
+          {/* Bouton Fermer */}
+          <button onClick={onClose} style={{
+            position:'absolute', top:22, right: isMobile ? '1.5rem' : '3rem', zIndex:5,
+            background:'rgba(0,12,32,0.6)', border:`1px solid ${wa(0.28)}`, color:activeColor,
+            ...mono, fontSize:'0.58rem', letterSpacing:'0.35em', padding:'6px 14px',
+            cursor:'pointer', transition:'all 0.2s', boxShadow:`0 0 10px ${wa(0.08)}`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background='rgba(255,30,60,0.15)'; e.currentTarget.style.borderColor='rgba(255,50,80,0.85)'; e.currentTarget.style.color='#ff3250'; }}
+          onMouseLeave={e => { e.currentTarget.style.background='rgba(0,12,32,0.6)'; e.currentTarget.style.borderColor=wa(0.28); e.currentTarget.style.color=activeColor; }}>
+            ⏱ ABORT_SESSION // ✕
+          </button>
+
+          {/* Zone scrollable avec numéros de ligne */}
+          <div style={{
+            flex:1, overflowY:'auto',
+            padding: isMobile ? '4.5rem 1.5rem 1.5rem' : '5.5rem 3rem 1.5rem',
+            display:'flex', gap:'1rem',
+          }}>
+
+            {/* Numéros de ligne décoratifs */}
+            {!isMobile && (
+              <div style={{
+                display:'flex', flexDirection:'column', gap:'1.52rem',
+                pointerEvents:'none', userSelect:'none', flexShrink:0, paddingTop:'0.1rem',
+                opacity: contentVisible ? 1 : 0, transition:'opacity 0.6s ease',
+              }}>
+                {Array.from({length:24}, (_, i) => (
+                  <span key={i} style={{ fontFamily:'monospace', fontSize:'0.4rem', color: wa(0.22), letterSpacing:'0.05em', lineHeight:1 }}>
+                    {String(i+1).padStart(2,'0')}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Contenu principal avec fade-in */}
+            <div style={{
+              flex:1,
+              opacity: contentVisible ? 1 : 0,
+              transform: contentVisible ? 'translateY(0)' : 'translateY(10px)',
+              transition:'opacity 0.4s ease, transform 0.4s ease',
+            }}>
+
+              {/* Badge CONNEXION ÉTABLIE */}
+              <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'1.2rem' }}>
+                <div style={{
+                  width:7, height:7, borderRadius:'50%', flexShrink:0,
+                  background:activeColor, boxShadow:`0 0 8px ${activeColor}`,
+                  animation:'statusPulse 2s ease-in-out infinite',
+                }} />
+                <span style={{ ...mono, fontSize:'0.48rem', letterSpacing:'0.7em', color: wa(0.55), textTransform:'uppercase' }}>
+                  CONNEXION ÉTABLIE
+                </span>
+              </div>
+
+              <p style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.7em', color: wa(0.42), marginBottom:'0.6rem', textTransform:'uppercase' }}>
+                DATA_STREAM // {s.num} ——
+              </p>
+              <h2 style={{ fontSize:'clamp(1.6rem,3vw,2.4rem)', fontWeight:700, color:'#ddeeff', marginBottom:'0.5rem', lineHeight:1.1, letterSpacing:'-0.02em', textShadow:`0 0 30px ${wa(0.30)}` }}>
+                {s.title}
+              </h2>
+              <p style={{ ...mono, fontSize:'0.65rem', color:'rgba(0,185,255,0.45)', letterSpacing:'0.35em', marginBottom:'2.5rem', textTransform:'uppercase' }}>
+                {s.tagline}
+              </p>
+
+              <div style={{ borderTop:`1px dashed ${wa(0.15)}`, paddingTop:'2rem' }}>
+                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} /> : <PC />}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer metadata */}
         <div style={{
-          borderTop:`1px dashed ${activeColor}22`,
-          paddingTop:'2rem',
-          position: 'relative'
+          padding: isMobile ? '0.65rem 1.5rem' : '0.65rem 3rem',
+          borderTop:`1px solid ${wa(0.10)}`,
+          display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0,
+          opacity: contentVisible ? 1 : 0, transition:'opacity 0.5s ease 0.2s',
         }}>
-          {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} /> : <PC />}
+          <span style={{ ...mono, fontSize:'0.4rem', color: wa(0.32), letterSpacing:'0.38em', textTransform:'uppercase' }}>
+            SESSION · {sessionTime}
+          </span>
+          <span style={{ ...mono, fontSize:'0.4rem', color: wa(0.32), letterSpacing:'0.38em', textTransform:'uppercase' }}>
+            NODE {s.num} / {String(N_SEC).padStart(2,'0')}
+          </span>
         </div>
       </div>
     </>
@@ -1768,7 +1834,7 @@ function CVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                 [ CV bientôt disponible ]
               </div>
             ) : (
-              <img src="/cv.png" alt="CV de Coline Derycke"
+              <img src={`${import.meta.env.BASE_URL}CV.png`} alt="CV de Coline Derycke"
                 onError={() => setImgError(true)}
                 style={{ width:'100%', height:'auto', display:'block', border:'1px solid rgba(0,185,255,0.08)' }} />
             )}
@@ -1776,7 +1842,7 @@ function CVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
           {/* Footer téléchargement */}
           <div style={{ padding:'1rem 2rem 1.5rem', borderTop:'1px solid rgba(0,185,255,0.08)', display:'flex', justifyContent:'flex-end' }}>
-            <a href="/cv.pdf" download="CV_Coline_Derycke.pdf"
+            <a href={`${import.meta.env.BASE_URL}CV.pdf`} download="CV_Coline_Derycke.pdf"
               style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.4em', textTransform:'uppercase', padding:'0.5rem 1.2rem', color:'rgba(0,185,255,0.85)', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,140,255,0.28)', textDecoration:'none', transition:'all 0.25s' }}
               onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(0,185,255,0.6)',boxShadow:'0 0 18px rgba(0,185,255,0.2)'})}
               onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.85)',borderColor:'rgba(0,140,255,0.28)',boxShadow:'none'})}>
@@ -1936,13 +2002,13 @@ function RapportModal({ open, onClose }: { open: boolean; onClose: () => void })
                 [ Rapport bientôt disponible ]
               </div>
             ) : (
-              <img src="/rapport.png" alt="Rapport de fabrication"
+              <img src={`${import.meta.env.BASE_URL}rapport.png`} alt="Rapport de fabrication"
                 onError={() => setImgError(true)}
                 style={{ width:'100%', height:'auto', display:'block', border:'1px solid rgba(0,200,180,0.08)' }} />
             )}
           </div>
           <div style={{ padding:'1rem 2rem 1.5rem', borderTop:'1px solid rgba(0,200,180,0.08)', display:'flex', justifyContent:'flex-end' }}>
-            <a href="/rapport.pdf" download="Rapport_Fabrication_Coline_Derycke.pdf"
+            <a href={`${import.meta.env.BASE_URL}rapport.pdf`} download="Rapport_Fabrication_Coline_Derycke.pdf"
               style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.4em', textTransform:'uppercase', padding:'0.5rem 1.2rem', color:'rgba(0,200,180,0.85)', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,200,180,0.28)', textDecoration:'none', transition:'all 0.25s' }}
               onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(0,200,180,0.6)',boxShadow:'0 0 18px rgba(0,200,180,0.2)'})}
               onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,200,180,0.85)',borderColor:'rgba(0,200,180,0.28)',boxShadow:'none'})}>
@@ -1959,9 +2025,11 @@ function RapportModal({ open, onClose }: { open: boolean; onClose: () => void })
 // EXPORT
 // ─────────────────────────────────────────────────────────────────
 export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
-  const zoneRef     = useRef<HTMLDivElement>(null);
-  const scrollRef   = useRef<ScrollData>({ section:0, progress:0 });
-  const isMobile    = useIsMobile();
+  const zoneRef        = useRef<HTMLDivElement>(null);
+  const scrollRef      = useRef<ScrollData>({ section:0, progress:0 });
+  const targetProgRef  = useRef(0);
+  const virtualProgRef = useRef(0);
+  const isMobile       = useIsMobile();
 
   const [active,    setActive]    = useState(0);
   const [sp,        setSp]        = useState(0);
@@ -1979,45 +2047,100 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
   useEffect(() => { termOpenRef.current = termOpen; }, [termOpen]);
 
   const scrollToSection = useCallback((i: number) => {
-    const zone = zoneRef.current;
-    if (!zone) return;
-    const totalScroll = zone.offsetHeight - window.innerHeight;
-    // +0.5 pour atterrir au milieu de la section : évite la limite flottante
-    // et le texte est pleinement visible (fade-in terminé à sp>0.16)
-    window.scrollTo({ top: zone.offsetTop + ((i + 0.5) / N_SEC) * totalScroll, behavior: 'smooth' });
+    // +0.5 = atterrir au milieu : texte pleinement visible (fade-in terminé à sp>0.16)
+    targetProgRef.current = (i + 0.5) / N_SEC;
+    // Sur touch : met aussi à jour le scroll natif pour que la scrollbar soit cohérente
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      const zone = zoneRef.current;
+      if (!zone) return;
+      const totalScroll = zone.offsetHeight - window.innerHeight;
+      window.scrollTo({ top: zone.offsetTop + targetProgRef.current * totalScroll, behavior: 'smooth' });
+    }
   }, []);
 
   useEffect(() => {
     document.body.style.overflow = 'auto';
     let lastHashIdx = -1;
-    const onScroll = () => {
-      const zone = zoneRef.current;
-      if (!zone) return;
-      const rect     = zone.getBoundingClientRect();
-      const scroll   = zone.offsetHeight - window.innerHeight;
-      const prog     = Math.max(0, Math.min(1, -rect.top / scroll));
-      if (prog > 0.01) setHasScrolled(true);
-      const raw      = prog * N_SEC;
-      const idx      = Math.min(N_SEC - 1, Math.floor(raw));
-      const secProg  = raw - idx;
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    // Applique un progrès (0-1) : met à jour scrollRef (Three.js) + état React (UI)
+    const applyProg = (prog: number) => {
+      const raw     = prog * N_SEC;
+      const idx     = Math.min(N_SEC-1, Math.floor(raw));
+      const secProg = raw - idx;
       scrollRef.current = { section:idx, progress:secProg };
+      if (prog > 0.01) setHasScrolled(true);
       setActive(idx);
       setSp(secProg);
       setTotalProg(prog);
-      if (idx !== lastHashIdx) {
-        lastHashIdx = idx;
-        history.replaceState(null, '', '#' + SECTIONS[idx].id);
-      }
+      if (idx !== lastHashIdx) { lastHashIdx = idx; history.replaceState(null,'','#'+SECTIONS[idx].id); }
     };
+
+    const getNativeProg = () => {
+      const zone = zoneRef.current;
+      if (!zone) return 0;
+      const rect   = zone.getBoundingClientRect();
+      const scroll = zone.offsetHeight - window.innerHeight;
+      return Math.max(0, Math.min(1, -rect.top / scroll));
+    };
+
+    // Scroll natif → aligne targetProg (touch : source principale ; desktop : scrollbar/clavier)
+    const onScroll = () => {
+      const prog = getNativeProg();
+      targetProgRef.current = prog;
+      if (isTouch) { virtualProgRef.current = prog; applyProg(prog); }
+    };
+
+    // Desktop : intercepte la molette → virtual scroll (touch génère touchmove, pas wheel)
+    const onWheel = (e: WheelEvent) => {
+      if (isTouch) return;
+      e.preventDefault();
+      const zone = zoneRef.current;
+      if (!zone) return;
+      const scrollablePx = zone.offsetHeight - window.innerHeight;
+      let dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 18;               // lignes → pixels
+      if (e.deltaMode === 2) dy *= window.innerHeight; // pages  → pixels
+      targetProgRef.current = Math.max(0, Math.min(1, targetProgRef.current + dy / scrollablePx));
+    };
+
+    // Boucle rAF desktop : inertie fluide à 60fps → pilote scrollRef + React state en continu
+    let rafId = 0;
+    if (!isTouch) {
+      let lastUIUpdate = 0;
+      const tick = () => {
+        const curr  = virtualProgRef.current;
+        const tgt   = targetProgRef.current;
+        const delta = tgt - curr;
+        if (Math.abs(delta) > 0.000002) {
+          const next    = curr + delta * 0.10;
+          virtualProgRef.current = next;
+          // scrollRef à chaque frame (Three.js en a besoin)
+          const raw     = next * N_SEC;
+          const idx     = Math.min(N_SEC-1, Math.floor(raw));
+          const secProg = raw - idx;
+          scrollRef.current = { section:idx, progress:secProg };
+          // React state à ~30fps : libère le thread JS pour le rendu 3D
+          const now = performance.now();
+          if (now - lastUIUpdate > 32) {
+            lastUIUpdate = now;
+            if (next > 0.01) setHasScrolled(true);
+            setActive(idx);
+            setSp(secProg);
+            setTotalProg(next);
+            if (idx !== lastHashIdx) { lastHashIdx = idx; history.replaceState(null,'','#'+SECTIONS[idx].id); }
+          }
+        }
+        rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+    }
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === '`') { e.preventDefault(); setTermOpen(p => !p); return; }
-      // Détection Konami (fonctionne même terminal ouvert)
       if (e.key === KONAMI[konamiIdxRef.current]) {
         konamiIdxRef.current++;
-        if (konamiIdxRef.current === KONAMI.length) {
-          konamiIdxRef.current = 0;
-          setBreachOpen(true);
-        }
+        if (konamiIdxRef.current === KONAMI.length) { konamiIdxRef.current = 0; setBreachOpen(true); }
       } else {
         konamiIdxRef.current = e.key === KONAMI[0] ? 1 : 0;
       }
@@ -2025,12 +2148,20 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); scrollToSection(Math.min(N_SEC-1, scrollRef.current.section + 1)); }
       if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  { e.preventDefault(); scrollToSection(Math.max(0,          scrollRef.current.section - 1)); }
     };
-    window.addEventListener('scroll', onScroll, { passive:true });
+
+    window.addEventListener('scroll',  onScroll, { passive:true  });
+    window.addEventListener('wheel',   onWheel,  { passive:false });
     window.addEventListener('keydown', onKey);
-    const hash = window.location.hash.slice(1);
+    const hash    = window.location.hash.slice(1);
     const hashIdx = SECTIONS.findIndex(s => s.id === hash);
     if (hashIdx !== -1) setTimeout(() => scrollToSection(hashIdx), 100);
-    return () => { document.body.style.overflow='hidden'; window.removeEventListener('scroll', onScroll); window.removeEventListener('keydown', onKey); };
+    return () => {
+      document.body.style.overflow = 'hidden';
+      window.removeEventListener('scroll',  onScroll);
+      window.removeEventListener('wheel',   onWheel);
+      window.removeEventListener('keydown', onKey);
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   if (lightMode) return (
@@ -2048,8 +2179,10 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
 
       {/* Canvas fixe — aria-hidden : purement décoratif, les lecteurs d'écran l'ignorent */}
       <div aria-hidden="true" style={{ position:'fixed', inset:0, zIndex:0 }}>
-        <Canvas camera={{ position:[0,0,5], fov:72 }} gl={{ antialias:true, alpha:true }}
-          onCreated={({ gl }) => gl.setClearColor(0,0)}>
+        <Canvas camera={{ position:[0,0,5], fov:72 }}
+          gl={{ antialias:false, alpha:false }}
+          dpr={[1, 1.5]}
+          onCreated={({ gl }) => gl.setClearColor(0x000208, 1)}>
           <DenseField scrollRef={scrollRef} />
           <EffectComposer>
             <Bloom intensity={1.1} luminanceThreshold={0.18} luminanceSmoothing={0.82} mipmapBlur />
