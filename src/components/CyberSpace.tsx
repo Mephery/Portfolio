@@ -202,10 +202,10 @@ const CosmicLineShader = {
 
       float breath  = 0.78 + uBreath * 0.22;
       float waveLum = 0.65 + vWave * 0.35;
-      vec3  col     = mix(vec3(0.0, 0.10, 0.38), vec3(0.0, 0.65, 1.0), pulse * 0.55);
+      vec3  col     = mix(vec3(0.0, 0.28, 0.62), vec3(0.0, 0.72, 1.0), pulse * 0.55);
       col = mix(col, vec3(0.82, 0.95, 1.0), vFocus);
 
-      float alpha = (0.022 + pulse * 0.13 + vFocus * 0.65) * waveLum * breath;
+      float alpha = (0.062 + pulse * 0.18 + vFocus * 0.65) * waveLum * breath;
       gl_FragColor = vec4(col, alpha);
     }
   `
@@ -601,7 +601,7 @@ export default function CyberSpace({ onDiveComplete }: { onDiveComplete?: () => 
           style={{ opacity: isDiving ? 0 : 1, transition:'opacity 0.4s ease', pointerEvents: isDiving ? 'none' : 'auto' }}>
 
           <p className="font-mono text-[10px] tracking-[0.7em] uppercase mb-4"
-            style={{ color:'rgba(0,170,255,0.4)' }}>
+            style={{ color:'rgba(0,195,255,0.70)', textShadow:'0 0 18px rgba(0,180,255,0.35)' }}>
             CYBERSPACE ▸ NODE 7743 ▸ ONLINE
           </p>
 
@@ -612,7 +612,7 @@ export default function CyberSpace({ onDiveComplete }: { onDiveComplete?: () => 
           </h1>
 
           <p className="font-mono text-xs tracking-[0.55em] uppercase mb-12"
-            style={{ color:'rgba(0,185,255,0.5)' }}>
+            style={{ color:'rgba(0,195,255,0.75)', textShadow:'0 0 14px rgba(0,180,255,0.30)' }}>
             DEV · INFRA · SÉCURITÉ
           </p>
 
@@ -631,7 +631,7 @@ export default function CyberSpace({ onDiveComplete }: { onDiveComplete?: () => 
           </button>
 
           <p className="font-mono text-[9px] tracking-[0.35em] uppercase mt-5"
-            style={{ color:'rgba(255,255,255,0.10)' }}>
+            style={{ color:'rgba(255,255,255,0.32)' }}>
             ⚠ AVERTISSEMENT : ACCÈS AU CYBERESPACE NON RÉGULÉ
           </p>
         </div>

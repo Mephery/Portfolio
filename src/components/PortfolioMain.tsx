@@ -26,7 +26,7 @@ const SEC_VH = 150; // vh par section
 // ─────────────────────────────────────────────────────────────────
 type ScrollData = { section: number; progress: number };
 
-// 0 — Silhouette assise de profil (figure facing left, vue depuis +Z)
+// 0. Silhouette assise de profil (figure facing left, vue depuis +Z)
 // Approche squelette : capsule entre chaque paire d'articulations
 async function mkHumanoid(n: number): Promise<Float32Array> {
   const OX = 1.35;   // décalage X global → figure à droite de l'écran
@@ -50,7 +50,7 @@ async function mkHumanoid(n: number): Promise<Float32Array> {
     return g;
   };
 
-  // Articulations — figure assise, de profil, regardant vers la gauche (-X)
+  // Articulations : figure assise, de profil, regardant vers la gauche (-X)
   // x négatif = avant (côté écran/clavier), x positif = arrière (dossier)
   // CLÉ : cuisse HORIZONTALE (HIP et KNE à quasi la même hauteur y)
   //        mollet VERTICAL   (ANK directement sous KNE, même x)
@@ -62,8 +62,8 @@ async function mkHumanoid(n: number): Promise<Float32Array> {
   const LBCK  = [ 0.28, 0.84, 0.00];   // bas du dos / coccyx (niveau siège)
   const BLLY  = [-0.08, 0.84, 0.10];   // ventre bas
   const HIP   = [ 0.08, 0.80, 0.00];   // hanche
-  const KNE   = [-0.56, 0.73, 0.00];   // genou — y≈HIP.y = cuisse horizontale
-  const ANK   = [-0.54, 0.04, 0.03];   // cheville — x≈KNE.x = mollet vertical
+  const KNE   = [-0.56, 0.73, 0.00];   // genou : y≈HIP.y = cuisse horizontale
+  const ANK   = [-0.54, 0.04, 0.03];   // cheville : x≈KNE.x = mollet vertical
   const FOOT  = [-0.66, 0.03, 0.03];   // pied (pointe vers l'avant)
   const ELB   = [-0.30, 1.08, 0.12];   // coude
   const WRS   = [-0.84, 0.86, 0.10];   // poignet / main sur clavier
@@ -131,7 +131,7 @@ async function mkHumanoid(n: number): Promise<Float32Array> {
   return out;
 }
 
-// 1 — Engrenages imbriqués (Human's Connexion) — rotation dans le shader
+// 1. Engrenages imbriqués (Human's Connexion) - rotation dans le shader
 // Centres et rayons exposés pour le vertex shader
 const GEAR_CENTERS: [number,number][] = [[-2.2, 0.0], [1.1, 0.0], [2.65, 1.51]];
 const GEAR_OUTER = [2.05, 1.42, 0.88];
@@ -139,7 +139,7 @@ const GEAR_TEETH = [14, 10, 7];
 // Vitesses angulaires en rad/s (rapports dentés) : G1 CW → G2 CCW → G3 CW
 const GEAR_SPEEDS = [0.28, -0.39, 0.56]; // G2 = G1*(14/10), G3 = G2*(10/7)
 
-// Retourne [positions, gearIds] — pas d'état global, compatible HMR
+// Retourne [positions, gearIds] : pas d'état global, compatible HMR
 function mkGearsWithIds(n: number): [Float32Array, Float32Array] {
   const p = new Float32Array(n * 3);
   const g = new Float32Array(n); // 0 / 1 / 2 = engrenage d'appartenance
@@ -162,7 +162,7 @@ function mkGearsWithIds(n: number): [Float32Array, Float32Array] {
       g[idx]=ci;
     }
   };
-  // Proportionnel aux circonférences — phase offset pour imbrication visuelle au contact
+  // Proportionnel aux circonférences, phase offset pour imbrication visuelle au contact
   addGear(0, Math.floor(n*.38));
   addGear(1, Math.floor(n*.26), Math.PI/10); // dents de G1 dans les creux de G0
   while(idx<n) addGear(2, n-idx, Math.PI/7); // dents de G2 dans les creux de G1
@@ -171,7 +171,7 @@ function mkGearsWithIds(n: number): [Float32Array, Float32Array] {
 
 function mkGears(n: number): Float32Array { return mkGearsWithIds(n)[0]; }
 
-// 2 — Attracteur de Lorenz (Chaos)
+// 2. Attracteur de Lorenz (Chaos)
 function mkLorenz(n: number): Float32Array {
   const p = new Float32Array(n*3);
   let x=0.1,y=0,z=0; const dt=0.005,s=10,r=28,b=8/3;
@@ -183,15 +183,15 @@ function mkLorenz(n: number): Float32Array {
   return p;
 }
 
-// 3 — Atome (Compétences) — cerveau conservé ci-dessous en commentaire
+// 3. Atome (Compétences) - cerveau conservé ci-dessous en commentaire
 // BX=0.5, BY=0.0 → centre-droit de l'écran
 
 // Anciens nœuds neuraux (conservés pour référence, non utilisés)
 const BRAIN_NODES: [number,number][] = [
-  // 0-4 : inner — surface du cerveau
+  // 0-4 : inner - surface du cerveau
   [ 0.5,  0.9],[-0.2,  0.5],[ 1.2,  0.5], // 0-2 inner top
   [-0.2, -0.4],[ 1.2, -0.4],              // 3-4 inner bas
-  // 5-13 : outer — constellation neuronale
+  // 5-13 : outer - constellation neuronale
   [-1.4,  2.2],[ 0.5,  3.0],[ 2.8,  2.0], // 5-7 top arc
   [ 3.8,  0.0],[ 2.8, -2.0],[ 0.5, -2.8], // 8-10 right/bot
   [-1.4, -2.0],[-3.2,  0.0],[-2.0,  0.5], // 11-13 left arc
@@ -223,9 +223,9 @@ function mkAtomWithArcT(n: number): [Float32Array, Float32Array] {
 
   const BX = 0.5, BY = 0.0;
   const R  = 1.70;
-  const CA = 0.5, SA = 0.866; // cos/sin(60°) — aplatissement de l'ellipse
+  const CA = 0.5, SA = 0.866; // cos/sin(60°) - aplatissement de l'ellipse
 
-  // A — Noyau (15%) : sphère dense, aNeural=-2 → grosse taille dans le shader
+  // A. Noyau (15%) : sphère dense, aNeural=-2 → grosse taille dans le shader
   const nucleusN = Math.floor(n * 0.15);
   for (let i = 0; i < nucleusN; i++) {
     const ph = Math.acos(2*Math.random()-1);
@@ -236,7 +236,7 @@ function mkAtomWithArcT(n: number): [Float32Array, Float32Array] {
         r*Math.cos(ph), -2.0);
   }
 
-  // B — 3 anneaux orbitaux (20% chacun = 60%) — z=0 : ellipses plates dans le plan écran
+  // B. 3 anneaux orbitaux (20% chacun = 60%) - z=0 : ellipses plates dans le plan écran
   // La rotation Z (vue de face) rend la profondeur inutile et source de distorsion perspective
   const ringN = Math.floor(n * 0.20);
   for (const phi of [0, Math.PI/3, 2*Math.PI/3]) {
@@ -250,7 +250,7 @@ function mkAtomWithArcT(n: number): [Float32Array, Float32Array] {
     }
   }
 
-  // C — Nuage quantique (25%) : halos dispersés autour
+  // C. Nuage quantique (25%) : halos dispersés autour
   while (idx < n) {
     const ph = Math.acos(2*Math.random()-1);
     const th = Math.random() * Math.PI * 2;
@@ -268,14 +268,14 @@ function mkAtom(n: number): Float32Array {
   return p;
 }
 
-// 4 — Double hélice ADN — hélice ELLIPTIQUE (xa >> zb) vue de face = deux vagues, pas un tube
+// 4. Double hélice ADN - hélice ELLIPTIQUE (xa >> zb) vue de face = deux vagues, pas un tube
 // Layout : [Brin A : strandN] [Brin B : strandN] [Barreaux : DNA_N_RUNGS * DNA_RUNG_PTS]
 const DNA_N_RUNGS  = 22;
 const DNA_RUNG_PTS = 90;  // 22 * 90 = 1980
 
 function mkHelix(n: number): Float32Array {
   const p = new Float32Array(n * 3);
-  const turns  = 1.5;   // 1.5 tours seulement — hélice très étirée qui déborde hors-cadre
+  const turns  = 1.5;   // 1.5 tours seulement : hélice très étirée qui déborde hors-cadre
   const xa     = 2.5;   // amplitude X
   const zb     = 0.45;  // amplitude Z (profondeur)
   const yBase  = -6.0, height = 12.0; // grande hauteur : les extrémités sortent de l'écran
@@ -292,7 +292,7 @@ function mkHelix(n: number): Float32Array {
     const t = (i / strandN) * Math.PI * 2 * turns;
     put(xa * Math.cos(t), yBase + (i / strandN) * height, zb * Math.sin(t));
   }
-  // Brin B — déphasé de π (côté opposé sur l'ellipse)
+  // Brin B déphasé de π (côté opposé sur l'ellipse)
   for (let i = 0; i < strandN; i++) {
     const t = (i / strandN) * Math.PI * 2 * turns + Math.PI;
     put(xa * Math.cos(t), yBase + (i / strandN) * height, zb * Math.sin(t));
@@ -313,7 +313,7 @@ function mkHelix(n: number): Float32Array {
   return p;
 }
 
-// 5 — Ampoule à incandescence (BTS — icône de l'apprentissage)
+// 5. Ampoule à incandescence (BTS - icône de l'apprentissage)
 // strand: 0=enveloppe de verre, 1=filament hélicoïdal, 2=halo intérieur, -1=culot métallique
 function mkTorusKnotWithStrand(n: number): [Float32Array, Float32Array] {
   const p = new Float32Array(n * 3);
@@ -325,7 +325,7 @@ function mkTorusKnotWithStrand(n: number): [Float32Array, Float32Array] {
   const jit = (v: number) => (Math.random() - 0.5) * v;
   const BX = 0.5;
 
-  // ── ENVELOPPE DE VERRE (strand=0) — profil A19 en révolution autour de Y ──
+  // ── ENVELOPPE DE VERRE (strand=0) : profil A19 en révolution autour de Y ──
   const glassProfile: [number, number][] = [
     [0.00,  1.68], [0.60,  1.44], [1.08,  0.84], [1.32,  0.12],
     [1.14, -0.30], [0.74, -0.66], [0.46, -0.98], [0.43, -1.32], [0.43, -1.62],
@@ -340,7 +340,7 @@ function mkTorusKnotWithStrand(n: number): [Float32Array, Float32Array] {
     put(BX + r * Math.cos(angle) + jit(0.025), y + jit(0.025), r * Math.sin(angle) + jit(0.025), 0);
   }
 
-  // ── FILAMENT EN HÉLICE (strand=1) — bobine luminescente ──────────────────
+  // ── FILAMENT EN HÉLICE (strand=1) : bobine luminescente ──────────────────
   const filamentN = Math.floor(n * 0.28);
   const coilR = 0.31, coilTurns = 6, coilYMin = -0.38, coilYMax = 0.66;
   for (let i = 0; i < filamentN; i++) {
@@ -351,7 +351,7 @@ function mkTorusKnotWithStrand(n: number): [Float32Array, Float32Array] {
              Math.sin(angle) * coilR + jit(0.012), 1);
   }
 
-  // ── HALO INTÉRIEUR (strand=2) — lueur chaude irradiée par le filament ────
+  // ── HALO INTÉRIEUR (strand=2) : lueur chaude irradiée par le filament ────
   const glowN = Math.floor(n * 0.20);
   for (let i = 0; i < glowN; i++) {
     const r     = Math.random() * 0.95 * Math.sqrt(Math.random());
@@ -360,7 +360,7 @@ function mkTorusKnotWithStrand(n: number): [Float32Array, Float32Array] {
     put(BX + r * Math.cos(angle), y, r * Math.sin(angle), 2);
   }
 
-  // ── CULOT MÉTALLIQUE (strand=-1) — anneaux du pas de vis ─────────────────
+  // ── CULOT MÉTALLIQUE (strand=-1) : anneaux du pas de vis ─────────────────
   while (idx < n) {
     const ring  = Math.floor(Math.random() * 4);
     const angle = Math.random() * Math.PI * 2;
@@ -375,8 +375,8 @@ function mkTorusKnotWithStrand(n: number): [Float32Array, Float32Array] {
 
 function mkTorusKnot(n: number): Float32Array { return mkTorusKnotWithStrand(n)[0]; }
 
-// 6 — Convergence vers un point (Contact)
-// 6 — Clé du Terminal : anneau travaillé + tige + 3 crans (section Contact)
+// 6. Convergence vers un point (Contact)
+// 6. Clé du Terminal : anneau travaillé + tige + 3 crans (section Contact)
 // strand: 0=bow, 1=deco intérieure, 2=tige, 3=crans
 function mkKeyWithStrand(n: number): [Float32Array, Float32Array] {
   const p = new Float32Array(n * 3);
@@ -420,7 +420,7 @@ function mkKeyWithStrand(n: number): [Float32Array, Float32Array] {
     s[idx++] = 1;
   }
 
-  // ── Tige : cylindre — shaftTop = bowY-(R+r) pour connexion exacte ──
+  // ── Tige : cylindre - shaftTop = bowY-(R+r) pour connexion exacte ──
   const shaftR = 0.055, shaftTop = bowY - (R + r), shaftBot = -0.62;
   for (let i = 0; i < nShaft; i++) {
     const theta = Math.random() * Math.PI * 2;
@@ -495,7 +495,7 @@ function useIsMobile() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// DENSE FIELD — champ d'étoiles + morphing vers les shapes CP77
+// DENSE FIELD - champ d'étoiles + morphing vers les shapes CP77
 // ─────────────────────────────────────────────────────────────────
 function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollData> }) {
   const mat = useMemo(() => new THREE.ShaderMaterial({
@@ -539,11 +539,11 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
         pos.z += sin(uTime * 0.20 + aRnd * 6.28) * 0.18 * drift;
         pos.x += cos(uTime * 0.14 + aRnd * 4.10) * 0.09 * drift;
         pos.y += sin(uTime * 0.17 + aRnd * 5.30) * 0.07 * drift;
-        // Direction aléatoire fixe par particule — pas de dérive centrifuge depuis l'origine
+        // Direction aléatoire fixe par particule - pas de dérive centrifuge depuis l'origine
         float breathe = sin(uTime * 1.6 + aRnd * 6.28) * 0.012 * tEas;
         vec3 bDir = normalize(vec3(sin(aRnd*127.3), cos(aRnd*311.7+1.0), sin(aRnd*253.1)));
         pos += bDir * breathe;
-        // Engrenages : rotation section 1, type 1 uniquement — classification par distance
+        // Engrenages : rotation section 1, type 1 uniquement - classification par distance
         if (uSection >= 1.0 && uSection < 2.0 && uMorphT > 0.05 && aGear >= 0.0) {
           vec2 gCenter = aGear < 0.5 ? vec2(-2.2,0.0) : aGear < 1.5 ? vec2(1.1,0.0) : vec2(2.65,1.51);
           float gSpeed  = aGear < 0.5 ? 0.28 : aGear < 1.5 ? -0.39 : 0.56;
@@ -552,7 +552,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           vec2 c = pos.xy - gCenter;
           pos.xy = vec2(c.x*cos(angle)-c.y*sin(angle), c.x*sin(angle)+c.y*cos(angle)) + gCenter;
         }
-        // Section 2 — Chaos : rotation Y lente + tourbillon de fond
+        // Section 2 - Chaos : rotation Y lente + tourbillon de fond
         if (uSection >= 2.0 && uSection < 3.0 && uMorphT > 0.05) {
           float rotAmt = smoothstep(0.3, 0.8, uMorphT);
           float ra = uTime * 0.07 * rotAmt;
@@ -564,8 +564,8 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           pos.x += cos(uTime*0.038 + aRnd*6.283) * (0.4 + aRnd*0.5) * bg * rotAmt;
           pos.y += sin(uTime*0.031 + aRnd*5.127) * (0.3 + aRnd*0.4) * bg * rotAmt;
         }
-        // Section 3 — Atome : rotation Z (comme une roue) — logo toujours lisible de face
-        // Uniquement noyau (aNeural=-2) et anneaux (aNeural=-0.5) — pas le nuage cloud (-1)
+        // Section 3 - Atome : rotation Z (comme une roue) - logo toujours lisible de face
+        // Uniquement noyau (aNeural=-2) et anneaux (aNeural=-0.5) - pas le nuage cloud (-1)
         bool isAtomCore = (uSection >= 3.0 && uSection < 4.0 && uMorphT > 0.05
                            && length(aTarget - position) > 0.8
                            && (aNeural < -1.5 || (aNeural > -0.6 && aNeural < -0.4)));
@@ -581,7 +581,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           if (aNeural < -1.5)
             pos += bDir * sin(uTime * 2.2 + aRnd * 6.28) * 0.015;
         }
-        // Section 4 — Double hélice : rotation lente autour de son propre axe incliné
+        // Section 4 - Double hélice : rotation lente autour de son propre axe incliné
         if (uSection >= 4.0 && uSection < 5.0 && uMorphT > 0.05 && aGear >= 0.0) {
           float rotAmt = smoothstep(0.3, 0.8, uMorphT);
           float angle  = uTime * 0.15 * rotAmt; // très lent : ~42 s par tour complet
@@ -593,8 +593,8 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           pos.y = pos.y * ca + cry * sa + ky * kdot * (1.0 - ca);
           pos.z = pos.z * ca + crz * sa;
         }
-        // Section 5 — Ampoule : statique, le glow fait le travail
-        // Section 6 — Clé : rotation Y lente (montre le volume 3D)
+        // Section 5 - Ampoule : statique, le glow fait le travail
+        // Section 6 - Clé : rotation Y lente (montre le volume 3D)
         if (uSection >= 6.0 && uMorphT > 0.05 && aKeyStrand >= 0.0) {
           float rotAmt = smoothstep(0.3, 0.8, uMorphT);
           float angle  = uTime * 0.28 * rotAmt;
@@ -673,7 +673,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
           alpha = halo * twink * (0.04 + vRnd*0.07);
         } else {
           col = secCol(uSection);
-          // Section 2 — Lorenz : rouge sombre → orangé selon vRnd
+          // Section 2 - Lorenz : rouge sombre → orangé selon vRnd
           col = mix(col, mix(vec3(0.60, 0.04, 0.0), vec3(1.0, 0.50, 0.05), vRnd), isChaos * 0.85);
           col = mix(col, vec3(1.0), vMorphed*0.45);
           col = mix(col, vec3(1.0,0.12,0.04), vFocus*vFocus*0.55);
@@ -715,7 +715,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
               alpha = mix(alpha, halo * pulse * (0.28 + vMorphed * 0.58), isN3);
             }
           }
-          // ── Section 4 : double hélice ADN — couleurs par brin ────────
+          // ── Section 4 : double hélice ADN - couleurs par brin ────────
           float isH4 = smoothstep(3.5,4.0,uSection)*(1.0-smoothstep(4.9,5.0,uSection));
           if (isH4 > 0.01 && vStrand >= 0.0) {
             vec3 strandCol;
@@ -725,7 +725,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
             col   = mix(col, strandCol, isH4 * vMorphed * 0.92);
             alpha = mix(alpha, halo * pulse * (0.10 + vRnd * 0.08 + vMorphed * 0.50), isH4);
           }
-          // ── Section 5 : ampoule — verre · filament · halo ────────────
+          // ── Section 5 : ampoule - verre · filament · halo ────────────
           float isK5 = smoothstep(4.9,5.1,uSection)*(1.0-smoothstep(5.9,6.0,uSection));
           if (isK5 > 0.01 && vKnotStrand >= 0.0) {
             if (vKnotStrand < 0.5) {
@@ -734,7 +734,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
               float gp = 0.45 + 0.55 * sin(uTime * 0.6 + vRnd * 3.14);
               alpha = mix(alpha, halo * gp * (0.04 + vRnd * 0.05 + vMorphed * 0.12), isK5);
             } else if (vKnotStrand < 1.5) {
-              // Filament : blanc chaud — alpha bas, le bloom fait le glow
+              // Filament : blanc chaud - alpha bas, le bloom fait le glow
               col   = mix(col, vec3(1.00, 0.94, 0.70), isK5 * vMorphed * 0.96);
               float fp = 0.62 + 0.38 * sin(uTime * 2.5 + vRnd * 6.28);
               alpha = mix(alpha, halo * fp * (0.10 + vRnd * 0.06 + vMorphed * 0.14), isK5);
@@ -745,12 +745,12 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
               alpha = mix(alpha, halo * hp * (0.02 + vRnd * 0.03 + vMorphed * 0.06), isK5);
             }
           }
-          // ── Section 6 : clé du terminal — cyan holographique ─────────
+          // ── Section 6 : clé du terminal - cyan holographique ─────────
           float isKey6 = smoothstep(5.9, 6.1, uSection);
           if (isKey6 > 0.01 && vKeyStrand >= 0.0) {
             float kp = 0.55 + 0.45 * sin(uTime * 1.4 + vRnd * 6.28);
             if (vKeyStrand < 0.5) {
-              // Bow (anneau) : cyan électrique — alpha bas pour que le trou reste visible
+              // Bow (anneau) : cyan électrique - alpha bas pour que le trou reste visible
               col   = mix(col, vec3(0.00, 0.88, 1.00), isKey6 * vMorphed * 0.95);
               alpha = mix(alpha, halo * kp * (0.07 + vRnd * 0.05 + vMorphed * 0.16), isKey6);
             } else if (vKeyStrand < 1.5) {
@@ -759,14 +759,14 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
               float dp = 0.40 + 0.60 * sin(uTime * 0.9 + vRnd * 4.71);
               alpha = mix(alpha, halo * dp * (0.06 + vRnd * 0.06 + vMorphed * 0.18), isKey6);
             } else if (vKeyStrand < 2.5) {
-              // Tige : blanc-cyan lumineux — scan vertical
+              // Tige : blanc-cyan lumineux - scan vertical
               float scanY  = fract(uTime * 0.35 + vRnd * 0.5);
               float scanPos = fract(vRnd * 3.7 + 0.5);
               float scan   = exp(-abs(scanPos - scanY) * 18.0) * 0.55;
               col   = mix(col, vec3(0.65, 0.95, 1.00), isKey6 * vMorphed * 0.90);
               alpha = mix(alpha, halo * (kp * 0.55 + scan) * (0.10 + vMorphed * 0.28), isKey6);
             } else {
-              // Crans : cyan-vert tranchant — plus brillant pour lisibilité
+              // Crans : cyan-vert tranchant - plus brillant pour lisibilité
               col   = mix(col, vec3(0.00, 0.95, 0.72), isKey6 * vMorphed * 0.98);
               alpha = mix(alpha, halo * kp * (0.14 + vRnd * 0.08 + vMorphed * 0.42), isKey6);
             }
@@ -818,11 +818,11 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
         // Ligne de base : dégradé rouge sombre → orangé le long de la trajectoire
         vec3 baseCol = mix(vec3(0.55, 0.05, 0.0), vec3(1.0, 0.45, 0.0), vT);
         float baseAlpha = 0.11;
-        // Pulse 1 — orange vif, lent (20 s/boucle)
+        // Pulse 1 - orange vif, lent (20 s/boucle)
         float p1 = gpulse(vT, fract(uTime * 0.050),        1800.0);
-        // Pulse 2 — rouge, moyen (13 s/boucle), décalé
+        // Pulse 2 - rouge, moyen (13 s/boucle), décalé
         float p2 = gpulse(vT, fract(uTime * 0.077 + 0.37), 2200.0);
-        // Pulse 3 — ambre/jaune, modéré (8 s/boucle), décalé
+        // Pulse 3 - ambre/jaune, modéré (8 s/boucle), décalé
         float p3 = gpulse(vT, fract(uTime * 0.125 + 0.71), 2800.0);
         vec3  pulseCol   = vec3(1.0, 0.55, 0.0)  * p1 * 0.9
                          + vec3(1.0, 0.10, 0.02) * p2 * 0.75
@@ -892,7 +892,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }), []);
 
-  // 3 anneaux orbitaux — z=0, ellipses parfaites dans le plan écran (pas de distorsion perspective)
+  // 3 anneaux orbitaux : z=0, ellipses parfaites dans le plan écran (pas de distorsion perspective)
   const atomRingGeo = useMemo(() => {
     const R = 1.70, BX = 0.5, BY = 0.0, SEGS = 90;
     const CA = 0.5;
@@ -915,7 +915,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     return geo;
   }, []);
 
-  // ── ÉLECTRONS ORBITAUX — flash ponctuel sur chaque anneau ────────
+  // ── ÉLECTRONS ORBITAUX : flash ponctuel sur chaque anneau ────────
   const electronMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: { uTime: {value:0}, uSection: {value:0}, uMorphT: {value:0} },
     vertexShader: `
@@ -932,7 +932,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
         const float BX = 0.50;
         // Activation cyclique : ~25% actif sur un cycle de 7s
         float phase  = fract(uTime / 7.0 + aPhaseOff);
-        float active = smoothstep(0.0, 0.06, phase) * (1.0 - smoothstep(0.22, 0.28, phase));
+        float activ = smoothstep(0.0, 0.06, phase) * (1.0 - smoothstep(0.22, 0.28, phase));
         // Position sur l'anneau : tête rapide, trail en arrière
         float headA  = uTime * aOrbitSpd;
         float angle  = headA - aTrailT * 0.65;
@@ -952,7 +952,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
         pos = c + off;
         float headGlow = 1.0 - aTrailT;
         float isN3  = smoothstep(2.85,3.15,uSection)*(1.0-smoothstep(3.6,3.9,uSection));
-        float vis   = smoothstep(0.70,0.95,uMorphT) * isN3 * active;
+        float vis   = smoothstep(0.70,0.95,uMorphT) * isN3 * activ;
         vAlpha = headGlow * headGlow * vis;
         vHead  = headGlow;
         float base  = 0.03 + headGlow * 0.16;
@@ -1010,7 +1010,7 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     const typ = new Float32Array(N);
     const rnd = new Float32Array(N);
 
-    // Champ d'étoiles uniforme — plus de gaussienne, plus de type 2 rouge
+    // Champ d'étoiles uniforme : plus de gaussienne, plus de type 2 rouge
     for (let i=0;i<N;i++){
       if (Math.random() < 0.82) {
         // Étoiles : distribution uniforme large sur tout le viewport
@@ -1047,18 +1047,18 @@ function DenseField({ scrollRef }: { scrollRef: React.MutableRefObject<ScrollDat
     const neuralBuf = new Float32Array(N).fill(-1);
     shapeIdx.forEach((pIdx, si) => { neuralBuf[pIdx] = atomArcTs[si]; });
 
-    // Identité de brin — synchronisé avec mkHelix
+    // Identité de brin : synchronisé avec mkHelix
     const strandBuf  = new Float32Array(N).fill(-1);
     const dnaStrandN = Math.floor((shapeIdx.length - DNA_N_RUNGS * DNA_RUNG_PTS) / 2);
     shapeIdx.forEach((pIdx, i) => {
       strandBuf[pIdx] = i < dnaStrandN ? 0.0 : i < dnaStrandN * 2 ? 1.0 : 0.5;
     });
 
-    // Identité de brin du nœud de trèfle — 0=Dev(cyan) 1=Infra(violet) 2=Sécu(rouge) -1=halo
+    // Identité de brin du nœud de trèfle : 0=Dev(cyan) 1=Infra(violet) 2=Sécu(rouge) -1=halo
     const knotStrandBuf = new Float32Array(N).fill(-1);
     shapeIdx.forEach((pIdx, i) => { knotStrandBuf[pIdx] = knotStrandIds[i]; });
 
-    // Identité de brin de la clé — 0=bow 1=deco 2=tige 3=crans -1=hors shape
+    // Identité de brin de la clé : 0=bow 1=deco 2=tige 3=crans -1=hors shape
     const keyStrandBuf = new Float32Array(N).fill(-1);
     shapeIdx.forEach((pIdx, i) => { keyStrandBuf[pIdx] = keyStrandIds[i]; });
 
@@ -1187,9 +1187,9 @@ function Timeline({ active, total, onJump }: { active:number; total:number; onJu
   const isMobile = useIsMobile();
   return (
     <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:`0 ${isMobile ? '12px' : '28px'} 18px`, pointerEvents:'none' }}>
-      {!isMobile && <div style={{ display:'flex', justifyContent:'space-evenly', marginBottom:'8px' }}>
+      {!isMobile && <div style={{ position:'relative', height:'1.2em', marginBottom:'8px' }}>
         {SECTIONS.map((s,i) => (
-          <span key={s.id} style={{ fontFamily:'monospace', fontSize:'0.5rem', letterSpacing:'0.3em', textTransform:'uppercase', color: i===active ? 'rgba(0,185,255,0.85)' : 'rgba(0,140,255,0.22)', transition:'color 0.4s' }}>
+          <span key={s.id} style={{ position:'absolute', left:`${((i+0.5)/N_SEC)*100}%`, transform:'translateX(-50%)', fontFamily:'monospace', fontSize:'0.5rem', letterSpacing:'0.3em', textTransform:'uppercase', color: i===active ? 'rgba(0,185,255,0.85)' : 'rgba(0,140,255,0.22)', transition:'color 0.4s', whiteSpace:'nowrap' }}>
             {s.title.split(' ')[0]}
           </span>
         ))}
@@ -1211,7 +1211,7 @@ function Timeline({ active, total, onJump }: { active:number; total:number; onJu
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SECTION CONTENT — piloté par scroll
+// SECTION CONTENT - pilotée par scroll
 // ─────────────────────────────────────────────────────────────────
 function SectionText({ section, sp, onOpen }: {
   section: typeof SECTIONS[number];
@@ -1244,7 +1244,7 @@ function SectionText({ section, sp, onOpen }: {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MODE LÉGER — layout statique, zéro Three.js
+// MODE LÉGER : layout statique, pour les bébés machines
 // ─────────────────────────────────────────────────────────────────
 function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void }) {
   const SEC_COLORS = ['#00b9ff','#3d7fff','#8c3cff','#ff3250','#ff6e28','#00c8b4','#b0d4ff'];
@@ -1321,7 +1321,7 @@ function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () =
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PANELS — contenu détaillé
+// PANELS - contenu détaillé
 // ─────────────────────────────────────────────────────────────────
 const mono: CSSProperties = { fontFamily:'monospace' };
 const tagStyle: CSSProperties = { ...mono, fontSize:'0.62rem', padding:'0.22rem 0.6rem', border:'1px solid rgba(0,140,255,0.2)', color:'rgba(0,185,255,0.8)', display:'inline-block', marginRight:'0.38rem', marginBottom:'0.38rem' };
@@ -1367,7 +1367,46 @@ function PSkills()     {
   return <div style={{display:'grid',gap:'1.5rem'}}>{cols.map(({l,s})=><div key={l}><p style={subLabel}>{l}</p><div>{s.map(x=><span key={x} style={tagStyle}>{x}</span>)}</div></div>)}</div>;
 }
 function PExperience() {
-  return <><div style={{marginBottom:'2rem'}}><p style={{...mono,fontSize:'0.58rem',color:'rgba(0,185,255,0.32)',letterSpacing:'0.5em',marginBottom:'0.3rem',textTransform:'uppercase'}}>2025 — EN COURS</p><p style={{fontWeight:600,color:'#ddeeff',marginBottom:'0.2rem'}}>Human's Connexion</p><p style={{...mono,fontSize:'0.65rem',color:'rgba(0,185,255,0.5)',marginBottom:'0.6rem'}}>Technicienne systèmes & réseaux · Alternance BTS SIO</p><p style={body}>Infogérance, AD, cloud Microsoft, sécurité infrastructure, supervision, gestion de parcs.</p></div><div><p style={{...mono,fontSize:'0.58rem',color:'rgba(255,80,100,0.38)',letterSpacing:'0.5em',marginBottom:'0.3rem',textTransform:'uppercase'}}>2025</p><p style={{fontWeight:600,color:'#ddeeff',marginBottom:'0.2rem'}}>Stormshield CSNA</p><p style={{...mono,fontSize:'0.65rem',color:'rgba(255,80,100,0.52)',marginBottom:'0.6rem'}}>Certified Stormshield Network Administrator</p><p style={body}>Configuration, sécurisation et supervision de pare-feux Stormshield.</p></div></>;
+  const techno = ['Active Directory','Windows Server','Linux (Debian/Ubuntu)','Proxmox','HyperV','VMware','Stormshield','GLPI','Zabbix','Exchange / Office 365','Nextcloud','Bluemind','PXE / MDT'];
+  const missions = [
+    { label:'Migration parc W10 → W11',    desc:"Passage de l'intégralité du parc client sous Windows 11 : inventaire, tests de compatibilité, déploiement." },
+    { label:'Mise à jour serveurs & bastion', desc:'Montée de version de l\'ensemble des serveurs et bastions vers les dernières LTS Debian / Ubuntu.' },
+    { label:'Déploiement pare-feux Stormshield', desc:'Installation et configuration chez des clients et en datacenter. Habilité à intervenir dans les deux datacenters de l\'entreprise.' },
+    { label:'Automatisation préparation PC', desc:'Mise en place d\'une chaîne PXE + MDT pour l\'industrialisation du déploiement Linux et Windows : zéro touch après amorçage réseau.' },
+  ];
+  return (
+    <>
+      {/* ── Human's Connexion ── */}
+      <div style={{marginBottom:'2.5rem'}}>
+        <p style={{...mono,fontSize:'0.58rem',color:'rgba(0,185,255,0.32)',letterSpacing:'0.5em',marginBottom:'0.3rem',textTransform:'uppercase'}}>2025 - EN COURS</p>
+        <p style={{fontWeight:600,color:'#ddeeff',marginBottom:'0.2rem'}}>Human's Connexion</p>
+        <p style={{...mono,fontSize:'0.65rem',color:'rgba(0,185,255,0.5)',marginBottom:'1.2rem'}}>Technicienne systèmes & réseaux · Alternance BTS SIO</p>
+
+        <p style={subLabel}>Stack technique</p>
+        <div style={{marginBottom:'1.6rem'}}>
+          {techno.map(t => <span key={t} style={tagStyle}>{t}</span>)}
+        </div>
+
+        <p style={subLabel}>Missions</p>
+        <div style={{display:'grid',gap:'0.75rem'}}>
+          {missions.map(({label,desc}) => (
+            <div key={label} style={{padding:'0.9rem 1rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}>
+              <p style={{...mono,fontSize:'0.62rem',color:'rgba(0,185,255,0.75)',marginBottom:'0.3rem',letterSpacing:'0.15em'}}>▸ {label}</p>
+              <p style={{...body,color:'rgba(200,220,255,0.55)',fontSize:'0.85rem'}}>{desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Certification ── */}
+      <div style={{paddingTop:'1.5rem',borderTop:'1px solid rgba(255,80,100,0.1)'}}>
+        <p style={{...mono,fontSize:'0.58rem',color:'rgba(255,80,100,0.38)',letterSpacing:'0.5em',marginBottom:'0.3rem',textTransform:'uppercase'}}>2025</p>
+        <p style={{fontWeight:600,color:'#ddeeff',marginBottom:'0.2rem'}}>Stormshield CSNA</p>
+        <p style={{...mono,fontSize:'0.65rem',color:'rgba(255,80,100,0.52)',marginBottom:'0.6rem'}}>Certified Stormshield Network Administrator</p>
+        <p style={body}>Configuration, sécurisation et supervision de pare-feux Stormshield.</p>
+      </div>
+    </>
+  );
 }
 function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
   const projs = [
@@ -1417,7 +1456,7 @@ function PContact({ onOpenCV }: { onOpenCV?: () => void }) {
 const PANELS = [PAbout, PCompany, PChaos, PSkills, PExperience, PSchool, PContact];
 
 // ─────────────────────────────────────────────────────────────────
-// DETAIL PANEL — slide depuis la droite
+// DETAIL PANEL : slide depuis la droite
 // ─────────────────────────────────────────────────────────────────
 
 // Applique une transparence à '#hex' ou 'rgba(...)'
@@ -1444,6 +1483,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
 
   useEffect(() => {
     if (open) {
+      document.body.style.overflow = 'hidden';
       setScanKey(k => k + 1);
       const now = new Date();
       const p = (n: number) => String(n).padStart(2, '0');
@@ -1453,6 +1493,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
     } else {
       setContentVisible(false);
     }
+    return () => { document.body.style.overflow = 'auto'; };
   }, [open]);
 
   const colors = [
@@ -1487,10 +1528,10 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
         zIndex:50, display:'flex', flexDirection:'column',
       }}>
 
-        {/* Zone principale — référent pour les éléments absolus */}
+        {/* Zone principale : référent pour les éléments absolus */}
         <div style={{ flex:1, position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
 
-          {/* Scan line horizontale — une seule fois à l'ouverture */}
+          {/* Scan line horizontale : une seule fois à l'ouverture */}
           {open && (
             <div key={scanKey} style={{
               position:'absolute', left:0, right:0, top:0, height:2,
@@ -1617,7 +1658,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       '  exit              → fermer  [ESC]',
     ]};
     case 'whoami': return { lines: [
-      'Coline Derycke — Dev · Infra · Sécu',
+      'Coline Derycke - Dev · Infra · Sécu',
       'BTS SIO SLAM · alternance @ Human\'s Connexion (Toulouse)',
       '→ coline.derycke@gmail.com',
     ]};
@@ -1640,7 +1681,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
         '→ École d\'ingénieur ou MIAGE',
       ]};
       if (arg==='chaos.txt') return { lines: [
-        '╔══ CHAOS — Chat communautaire chiffré ══╗',
+        '╔══ CHAOS - Chat communautaire chiffré ══╗',
         '  Infra  : Proxmox · 2 LXC (dev/prod) · Docker · Nginx',
         '  Back   : Node.js · PostgreSQL · WebRTC · Double Ratchet E2EE',
         '  Front  : HTML/CSS/JS → React + Tailwind (Talos)',
@@ -1650,7 +1691,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       return { lines: [`cat: ${arg}: No such file or directory`] };
     case 'ping':
       if (arg.includes('hc') || arg.includes('human')) return { lines: [
-        `PING hc.fr — Human's Connexion (Toulouse)`,
+        `PING hc.fr - Human's Connexion (Toulouse)`,
         'Poste    : Technicienne systèmes & réseaux',
         'Missions : AD · Cloud Microsoft · Infogérance · Sécu réseau',
         'Durée    : 2025 → en cours (alternance BTS SIO)',
@@ -1658,7 +1699,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       ]};
       return { lines: [`ping: ${arg||'...'}: Name or service not known`] };
     case 'breach': return { lines: [
-      '[ VOODOO BOYS — BREACH PROTOCOL ]',
+      '[ VOODOO BOYS - BREACH PROTOCOL ]',
       'ICE détecté. Séquence d\'activation requise.',
       '',
       '  ↑ ↑ ↓ ↓ ← → ← → B A',
@@ -1668,7 +1709,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
     case 'clear': return { lines: [], action:'clear' };
     case 'exit':  return { lines: [], action:'close' };
     case '':      return { lines: [] };
-    default:      return { lines: [`bash: ${cmd}: command not found — tape 'help'`] };
+    default:      return { lines: [`bash: ${cmd}: command not found - tape 'help'`] };
   }
 }
 
@@ -1757,7 +1798,7 @@ function Terminal({ onClose, onOpenCV, onOpenRapport }: { onClose:()=>void; onOp
       {/* Barre titre */}
       <div style={{ padding:'0.42rem 1rem', borderBottom:'1px solid rgba(0,185,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,185,255,0.03)' }}>
         <span style={{ fontSize:'0.55rem', letterSpacing:'0.5em', color:'rgba(0,185,255,0.55)', textTransform:'uppercase' }}>
-          ▸ CYBERSPACE TERMINAL — coline@cyberspace:~
+          ▸ CYBERSPACE TERMINAL : coline@cyberspace:~
         </span>
         <button onClick={onClose}
           style={{ background:'none', border:'none', color:'rgba(0,185,255,0.4)', cursor:'pointer', fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.35em', textTransform:'uppercase' }}
@@ -1858,12 +1899,12 @@ function CVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
 
 const BREACH_MSG = [
-  'IDENTIFICANT : Coline Derycke — Netrunner',
+  'IDENTIFICANT : Coline Derycke · Netrunner',
   'STATUT       : BTS SIO SLAM · Alternance active',
   'CLEARANCE    : VOODOO BOYS [ACCORDÉ]',
   '',
   'Tu viens de trouver la backdoor.',
-  'Bonne pioche — peu de gens vont aussi loin.',
+  'Bonne pioche ! Peu de gens vont aussi loin.',
 ].join('\n');
 
 function BreachModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -1923,12 +1964,12 @@ function BreachModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
         {/* En-tête */}
         <div style={{ textAlign:'center' }}>
-          <p style={{ fontSize:'0.45rem', letterSpacing:'0.9em', color:dim, marginBottom:'0.6rem' }}>[ VOODOO BOYS NETWORK — ACCÈS NON AUTORISÉ ]</p>
+          <p style={{ fontSize:'0.45rem', letterSpacing:'0.9em', color:dim, marginBottom:'0.6rem' }}>[ VOODOO BOYS NETWORK · ACCÈS NON AUTORISÉ ]</p>
           <h1 style={{ fontSize:'clamp(1.8rem,5vw,3rem)', fontWeight:900, letterSpacing:'0.05em', color:red, textShadow:`0 0 40px rgba(255,30,55,0.5)` }}>BREACH PROTOCOL</h1>
           <p style={{ fontSize:'0.42rem', letterSpacing:'0.7em', color:red2, marginTop:'0.3rem' }}>V . 2 0 7 7</p>
         </div>
 
-        {/* Phase 1 — barre de progression */}
+        {/* Phase 1 : barre de progression */}
         {phase >= 1 && phase < 3 && (
           <div style={{ width:'100%', maxWidth:420 }}>
             <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.48rem', letterSpacing:'0.4em', color:red2, marginBottom:'0.4rem' }}>
@@ -1943,18 +1984,18 @@ function BreachModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           </div>
         )}
 
-        {/* Phase 2 — cascade hex */}
+        {/* Phase 2 : cascade hex */}
         {phase === 2 && (
           <pre style={{ fontSize:'0.52rem', color:'rgba(255,30,55,0.28)', lineHeight:1.6, letterSpacing:'0.1em', userSelect:'none', width:'100%', maxWidth:480, overflow:'hidden' }}>
             {hexLines.join('\n')}
           </pre>
         )}
 
-        {/* Phase 3 — message */}
+        {/* Phase 3 : message */}
         {phase >= 3 && (
           <div style={{ width:'100%', maxWidth:480 }}>
             <p style={{ fontSize:'0.55rem', letterSpacing:'0.6em', color:'rgba(0,255,140,0.7)', marginBottom:'1.2rem', textShadow:'0 0 18px rgba(0,255,140,0.4)' }}>
-              ██ ICE DÉFAIT — ACCÈS ACCORDÉ
+              ██ ICE DÉFAIT · ACCÈS ACCORDÉ
             </p>
             <pre style={{ fontSize:'0.72rem', color:'rgba(255,200,200,0.75)', lineHeight:1.8, whiteSpace:'pre-wrap', letterSpacing:'0.01em' }}>
               {BREACH_MSG.slice(0, msgChars)}
@@ -2043,8 +2084,10 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
   const [breachOpen,  setBreachOpen]  = useState(false);
   const [termOpen,    setTermOpen]    = useState(false);
   const termOpenRef  = useRef(false);
+  const panelOpenRef = useRef(false);
   const konamiIdxRef = useRef(0);
-  useEffect(() => { termOpenRef.current = termOpen; }, [termOpen]);
+  useEffect(() => { termOpenRef.current  = termOpen;  }, [termOpen]);
+  useEffect(() => { panelOpenRef.current = panelOpen; }, [panelOpen]);
 
   const scrollToSection = useCallback((i: number) => {
     // +0.5 = atterrir au milieu : texte pleinement visible (fade-in terminé à sp>0.16)
@@ -2094,6 +2137,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
     // Desktop : intercepte la molette → virtual scroll (touch génère touchmove, pas wheel)
     const onWheel = (e: WheelEvent) => {
       if (isTouch) return;
+      if (panelOpenRef.current) return; // laisse le panneau gérer son propre scroll
       e.preventDefault();
       const zone = zoneRef.current;
       if (!zone) return;
@@ -2145,6 +2189,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
         konamiIdxRef.current = e.key === KONAMI[0] ? 1 : 0;
       }
       if (termOpenRef.current) return;
+      if (panelOpenRef.current) { if (e.key === 'Escape') setPanelOpen(false); return; }
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); scrollToSection(Math.min(N_SEC-1, scrollRef.current.section + 1)); }
       if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  { e.preventDefault(); scrollToSection(Math.max(0,          scrollRef.current.section - 1)); }
     };
@@ -2177,7 +2222,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
   return (
     <div style={{ background:'#000208' }}>
 
-      {/* Canvas fixe — aria-hidden : purement décoratif, les lecteurs d'écran l'ignorent */}
+      {/* Canvas fixe - aria-hidden : purement décoratif, les lecteurs d'écran l'ignorent */}
       <div aria-hidden="true" style={{ position:'fixed', inset:0, zIndex:0 }}>
         <Canvas camera={{ position:[0,0,5], fov:72 }}
           gl={{ antialias:false, alpha:false }}
