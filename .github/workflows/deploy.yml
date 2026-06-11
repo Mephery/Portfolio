@@ -1,4 +1,4 @@
-name: Deploy to Hostinger (SFTP)
+name: Deploy to Hostinger (SFTP Password)
 
 on:
   push:
@@ -46,13 +46,12 @@ jobs:
           name: website-dist
           path: ./dist
 
-      - name: Propulsion sécurisée via SFTP
-        uses: easingthemes/ssh-deploy@v5.1.0
+      - name: Propulsion SFTP par Mot de Passe
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          SSH_PRIVATE_KEY: 'no_key'
-          ARGS: "-rlgoDIVz --delete"
-          REMOTE_HOST: ${{ secrets.FTP_SERVER }}
-          REMOTE_USER: ${{ secrets.FTP_USERNAME }}
-          PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          SOURCE: "dist/"
-          TARGET: "public_html/"
+          username: ${{ secrets.FTP_USERNAME }}
+          server: ${{ secrets.FTP_SERVER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 22
+          local_path: './dist/'
+          remote_path: 'public_html/'
