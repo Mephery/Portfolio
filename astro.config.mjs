@@ -8,7 +8,7 @@ import tailwindcss from '@tailwindcss/vite';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://mephery.github.io',
-  base: '/Portfolio',
+  base: '/Portfolio/',
 
   integrations: [react()],
 

@@ -1550,11 +1550,11 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
       const p = (n: number) => String(n).padStart(2, '0');
       setSessionTime(`${now.getFullYear()}-${p(now.getMonth()+1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`);
       const t = setTimeout(() => setContentVisible(true), 380);
-      return () => clearTimeout(t);
+      return () => { clearTimeout(t); document.body.style.overflow = 'auto'; };
     } else {
       setContentVisible(false);
+      document.body.style.overflow = 'auto';
     }
-    return () => { document.body.style.overflow = 'auto'; };
   }, [open]);
 
   const colors = [
