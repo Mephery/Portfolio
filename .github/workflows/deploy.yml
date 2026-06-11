@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Deploy to Hostinger (SFTP)
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
           path: ./dist
 
   deploy:
-    name: Deploy via FTP
+    name: Deploy via SFTP
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -46,10 +46,13 @@ jobs:
           name: website-dist
           path: ./dist
 
-      - name: Propulser les fichiers sur Hostinger via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Propulsion sécurisée via SFTP
+        uses: easingthemes/ssh-deploy@v5.1.0
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
+          SSH_PRIVATE_KEY: 'no_key'
+          ARGS: "-rlgoDIVz --delete"
+          REMOTE_HOST: ${{ secrets.FTP_SERVER }}
+          REMOTE_USER: ${{ secrets.FTP_USERNAME }}
+          PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          SOURCE: "dist/"
+          TARGET: "public_html/"
