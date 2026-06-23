@@ -1246,7 +1246,7 @@ function SectionText({ section, sp, onOpen }: {
 // ─────────────────────────────────────────────────────────────────
 // MODE LÉGER : layout statique, pour les bébés machines
 // ─────────────────────────────────────────────────────────────────
-function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void }) {
+function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport, onOpenVeille }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void; onOpenVeille: () => void }) {
   const SEC_COLORS = ['#00b9ff','#3d7fff','#8c3cff','#ff3250','#ff6e28','#00c8b4','#b0d4ff'];
   const isMobile = useIsMobile();
   const btnBase: CSSProperties = { fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.45em', textTransform:'uppercase', padding:'0.32rem 0.8rem', cursor:'pointer', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,140,255,0.22)', color:'rgba(0,185,255,0.6)', transition:'all 0.22s' };
@@ -1310,7 +1310,7 @@ function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport }: { onBack?: () =
                 letterSpacing:'0.4em', textTransform:'uppercase', marginBottom:'1.6rem' }}>{s.tagline}</p>
 
               <div style={{ borderTop:`1px solid ${color}18`, paddingTop:'1.6rem' }}>
-                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} /> : <PC />}
+                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : <PC />}
               </div>
             </section>
           );
@@ -1408,7 +1408,7 @@ function PExperience() {
     </>
   );
 }
-function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
+function PSchool({ onOpenRapport, onOpenVeille }: { onOpenRapport?: () => void; onOpenVeille?: () => void }) {
   const projs = [
     {
       title: 'Clone Netflix',
@@ -1416,7 +1416,7 @@ function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
       desc: "Reproduction fidèle de l'interface Netflix : hero animé, carousels de contenus, design responsive. Exercice de CSS avancé et manipulation du DOM.",
       img: `${import.meta.env.BASE_URL}projects/netflix-screenshot.png`,
       github: 'https://github.com/Mephery/Projet-Netflix',
-      live: 'https://netflix.colinederycke-portfolio.com/',
+      live: 'https://projet-netflix-git-main-coline-ds-projects.vercel.app/',
     },
     {
       title: 'Pomodoro',
@@ -1424,7 +1424,7 @@ function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
       desc: 'Timer Pomodoro avec cycles travail/pause configurables, notifications sonores et suivi de sessions. Interface soignée autour de la gestion du temps.',
       img: `${import.meta.env.BASE_URL}projects/pomodoro-screenshot.png`,
       github: 'https://github.com/Mephery/pomodoro',
-      live: 'https://pomodoro.colinederycke-portfolio.com/',
+      live: 'https://pomodoro-git-main-coline-ds-projects.vercel.app/',
     },
     {
       title: 'Typing Speed Challenge',
@@ -1432,16 +1432,16 @@ function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
       desc: "Test de vitesse de frappe avec statistiques en temps réel. Options au choix pour l'esthétique et la difficulté.",
       img: `${import.meta.env.BASE_URL}projects/Typing-speed-test-screenshot.png`,
       github: 'https://github.com/Mephery/typing-speed-test',
-      live: 'https://typing-test.colinederycke-portfolio.com/',
+      live: 'https://typing-speed-test-git-main-coline-ds-projects.vercel.app/',
     },
   ];
   const netItems = [
-    'Segmentation réseau : VLANs sous Cisco (IOS)',
-    'Administration système : Windows Server, Active Directory',
-    'Firewall & SSH : déploiement PfSense, règles et droits SSH',
-    'Routage & NAT : configuration réseau Cisco',
-    'GLPI : gestion de parc informatique',
-    'CTF Linux : exploitation de vulnérabilités système',
+    'Routage : configuration réseau Cisco Packet Tracer',
+    'Segmentation réseau : VLANs sous Cisco Packet Tracer',
+    'Administration système : Windows Server, Active Directory, GPO, DNS, DHCP',
+    'Firewall & SSH : déploiement PfSense, filtrage NAT, règles et droits SSH',
+    'GLPI : gestion inventaire de parc informatique, ticketing',
+    'CTF Linux : exploitation de vulnérabilités système, élévation de privilèges',
   ];
   const lnk: CSSProperties = { ...mono, fontSize:'0.68rem', letterSpacing:'0.3em', color:'rgba(0,200,180,0.75)', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'none' };
   const corner = (pos: CSSProperties): CSSProperties => ({
@@ -1452,7 +1452,7 @@ function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
   return (
     <div style={{display:'grid',gap:'1.25rem'}}>
       {projs.map(({title,tech,desc,img,github,live},n)=>(
-        <div key={title} style={{padding:'1.25rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}>
+        <div key={title} style={{padding:'1.25rem 1.25rem 1.55rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}>
           <div style={{position:'relative',marginBottom:'0.85rem',border:'1px solid rgba(0,185,255,0.15)',background:'rgba(0,8,24,0.8)',overflow:'hidden'}}>
             <span style={corner({top:4,left:4,borderTopWidth:1,borderLeftWidth:1})}/>
             <span style={corner({top:4,right:4,borderTopWidth:1,borderRightWidth:1})}/>
@@ -1477,7 +1477,7 @@ function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
         </div>
       ))}
 
-      <div style={{padding:'1.25rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}>
+      <div style={{padding:'1.25rem 1.25rem 1.55rem',border:'1px solid rgba(0,140,255,0.1)',background:'rgba(0,15,40,0.5)'}}>
         <p style={{...mono,fontSize:'0.55rem',color:'rgba(0,185,255,0.35)',letterSpacing:'0.45em',textTransform:'uppercase',marginBottom:'0.9rem'}}>Réseau &amp; Systèmes</p>
         <div style={{display:'grid',gap:'0.45rem'}}>
           {netItems.map(item=>(
@@ -1488,13 +1488,22 @@ function PSchool({ onOpenRapport }: { onOpenRapport?: () => void }) {
         </div>
       </div>
 
-      {onOpenRapport && (
-        <div style={{marginTop:'0.25rem'}}>
-          <button onClick={onOpenRapport} style={lnk}
-            onMouseEnter={e=>e.currentTarget.style.color='rgba(0,200,180,1)'}
-            onMouseLeave={e=>e.currentTarget.style.color='rgba(0,200,180,0.75)'}>
-            ▸ RAPPORT DE FABRICATION ↗
-          </button>
+      {(onOpenRapport || onOpenVeille) && (
+        <div style={{marginTop:'0.25rem',display:'grid',gap:'0.6rem'}}>
+          {onOpenRapport && (
+            <button onClick={onOpenRapport} style={lnk}
+              onMouseEnter={e=>e.currentTarget.style.color='rgba(0,200,180,1)'}
+              onMouseLeave={e=>e.currentTarget.style.color='rgba(0,200,180,0.75)'}>
+              ▸ RAPPORT DE FABRICATION ↗
+            </button>
+          )}
+          {onOpenVeille && (
+            <button onClick={onOpenVeille} style={lnk}
+              onMouseEnter={e=>e.currentTarget.style.color='rgba(0,200,180,1)'}
+              onMouseLeave={e=>e.currentTarget.style.color='rgba(0,200,180,0.75)'}>
+              ▸ VEILLE TECHNOLOGIQUE ↗
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1534,7 +1543,7 @@ function withAlpha(col: string, a: number): string {
   }
   return col;
 }
-function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secIdx:number; open:boolean; onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void }) {
+function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVeille }: { secIdx:number; open:boolean; onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void }) {
   const s = SECTIONS[secIdx];
   const PC = PANELS[secIdx];
 
@@ -1673,7 +1682,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
               </p>
 
               <div style={{ borderTop:`1px dashed ${wa(0.15)}`, paddingTop:'2rem' }}>
-                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} /> : <PC />}
+                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : <PC />}
               </div>
             </div>
           </div>
@@ -1701,7 +1710,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport }: { secId
 // ─────────────────────────────────────────────────────────────────
 // TERMINAL
 // ─────────────────────────────────────────────────────────────────
-function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'cv'|'rapport' } {
+function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'cv'|'rapport'|'veille' } {
   const parts = raw.trim().split(/\s+/);
   const cmd   = parts[0].toLowerCase();
   const arg   = parts[1] ?? '';
@@ -1711,6 +1720,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       '  ls                → sections du portfolio',
       '  cat cv.txt        → ouvrir le CV',
       '  cat rapport.txt   → rapport de fabrication',
+      '  cat veille.txt    → veille technologique',
       '  cat about.txt     → à propos',
       '  cat chaos.txt     → projet Chaos',
       '  ping hc.fr        → infos alternance',
@@ -1728,12 +1738,13 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       'drwxr-xr-x  01_about/    02_company/    03_chaos/',
       'drwxr-xr-x  04_skills/   05_experience/ 06_school/',
       'drwxr-xr-x  07_contact/',
-      '-rw-r--r--  cv.txt   rapport.txt   about.txt   chaos.txt',
+      '-rw-r--r--  cv.txt   rapport.txt   veille.txt   about.txt   chaos.txt',
     ]};
     case 'cat':
       if (!arg)              return { lines: ['usage : cat <fichier>'] };
       if (arg==='cv.txt')       return { lines: ['[Ouverture du CV…]'],                    action:'cv' };
       if (arg==='rapport.txt')  return { lines: ['[Ouverture du rapport de fabrication…]'], action:'rapport' };
+      if (arg==='veille.txt')   return { lines: ['[Ouverture de la veille technologique…]'], action:'veille' };
       if (arg==='about.txt') return { lines: [
         'Développeuse passionnée par le code, l\'infra et la sécurité.',
         'J\'aime construire des systèmes complets, du serveur au frontend.',
@@ -1776,11 +1787,11 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
 
 type TermLine = { type:'cmd'|'out'; text:string };
 
-const TERM_CMDS  = ['about.txt','breach','cat','chaos.txt','clear','cv.txt','exit','help','ls','ping','rapport.txt','whoami'];
-const CAT_FILES  = ['cv.txt','rapport.txt','about.txt','chaos.txt'];
+const TERM_CMDS  = ['about.txt','breach','cat','chaos.txt','clear','cv.txt','exit','help','ls','ping','rapport.txt','veille.txt','whoami'];
+const CAT_FILES  = ['cv.txt','rapport.txt','veille.txt','about.txt','chaos.txt'];
 const PING_HOSTS = ['hc.fr'];
 
-function Terminal({ onClose, onOpenCV, onOpenRapport }: { onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void }) {
+function Terminal({ onClose, onOpenCV, onOpenRapport, onOpenVeille }: { onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void }) {
   const [history, setHistory] = useState<TermLine[]>([
     { type:'out', text:'╔══════════════════════════════════════════╗' },
     { type:'out', text:'║  CYBERSPACE TERMINAL  v1.0.0              ║' },
@@ -1810,6 +1821,7 @@ function Terminal({ onClose, onOpenCV, onOpenRapport }: { onClose:()=>void; onOp
     setInput('');
     if (action === 'cv')      setTimeout(onOpenCV,      280);
     if (action === 'rapport') setTimeout(onOpenRapport, 280);
+    if (action === 'veille')  setTimeout(onOpenVeille,  280);
   };
 
   const onKD = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -2123,6 +2135,56 @@ function RapportModal({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
+function VeilleModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [imgError, setImgError] = useState(false);
+  if (!open) return null;
+  return (
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:80, background:'rgba(0,1,5,0.65)', backdropFilter:'blur(8px)' }} />
+      <div style={{ position:'fixed', inset:0, zIndex:90, display:'flex', alignItems:'center', justifyContent:'center', padding:'1.5rem', pointerEvents:'none' }}>
+        <div style={{ pointerEvents:'auto', width:'100%', maxWidth:620, maxHeight:'90vh', display:'flex', flexDirection:'column',
+          background:'rgba(0,4,16,0.97)', border:'1px solid rgba(0,200,180,0.2)',
+          boxShadow:'0 0 60px rgba(0,200,180,0.08), 0 0 120px rgba(0,200,180,0.03)',
+          backdropFilter:'blur(24px)', position:'relative' }}>
+          {(['tl','tr','bl','br'] as const).map(p => <Corner key={p} p={p} />)}
+          <div style={{ padding:'1.5rem 2rem 1rem', borderBottom:'1px solid rgba(0,200,180,0.08)', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <p style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.7em', color:'rgba(0,200,180,0.35)', textTransform:'uppercase', marginBottom:'0.3rem' }}>DATA_STREAM // 10 ——</p>
+              <h2 style={{ fontSize:'1.2rem', fontWeight:700, color:'#ddeeff', letterSpacing:'-0.02em' }}>Veille technologique</h2>
+              <p style={{ ...mono, fontSize:'0.58rem', color:'rgba(0,200,180,0.4)', letterSpacing:'0.4em', textTransform:'uppercase', marginTop:'0.2rem' }}>BTS SIO · Portfolio</p>
+            </div>
+            <button onClick={onClose}
+              style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.35em', textTransform:'uppercase', padding:'0.3rem 0.7rem', cursor:'pointer', color:'rgba(0,200,180,0.55)', background:'rgba(0,12,32,0.6)', border:'1px solid rgba(0,200,180,0.2)', transition:'all 0.2s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,50,80,0.9)',borderColor:'rgba(255,30,60,0.4)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,200,180,0.55)',borderColor:'rgba(0,200,180,0.2)'})}>
+              ✕ FERMER
+            </button>
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem' }}>
+            {imgError ? (
+              <div style={{ textAlign:'center', padding:'4rem 2rem', color:'rgba(0,200,180,0.4)', fontFamily:'monospace', fontSize:'0.68rem', letterSpacing:'0.3em' }}>
+                [ Veille bientôt disponible ]
+              </div>
+            ) : (
+              <img src={`${import.meta.env.BASE_URL}veille.webp`} alt="Veille technologique"
+                onError={() => setImgError(true)}
+                style={{ width:'100%', height:'auto', display:'block', border:'1px solid rgba(0,200,180,0.08)' }} />
+            )}
+          </div>
+          <div style={{ padding:'1rem 2rem 1.5rem', borderTop:'1px solid rgba(0,200,180,0.08)', display:'flex', justifyContent:'flex-end' }}>
+            <a href={`${import.meta.env.BASE_URL}veille.pdf`} download="Veille_Technologique_Coline_Derycke.pdf"
+              style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.4em', textTransform:'uppercase', padding:'0.5rem 1.2rem', color:'rgba(0,200,180,0.85)', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,200,180,0.28)', textDecoration:'none', transition:'all 0.25s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(0,200,180,0.6)',boxShadow:'0 0 18px rgba(0,200,180,0.2)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,200,180,0.85)',borderColor:'rgba(0,200,180,0.28)',boxShadow:'none'})}>
+              ↓ TÉLÉCHARGER PDF
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────
 // EXPORT
 // ─────────────────────────────────────────────────────────────────
@@ -2142,6 +2204,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
   const [lightMode,   setLightMode]   = useState(false);
   const [cvOpen,      setCvOpen]      = useState(false);
   const [rapportOpen, setRapportOpen] = useState(false);
+  const [veilleOpen,  setVeilleOpen]  = useState(false);
   const [breachOpen,  setBreachOpen]  = useState(false);
   const [termOpen,    setTermOpen]    = useState(false);
   const termOpenRef  = useRef(false);
@@ -2272,11 +2335,12 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
 
   if (lightMode) return (
     <>
-      <LightMode onBack={onBack} onHeavy={() => setLightMode(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} />
+      <LightMode onBack={onBack} onHeavy={() => setLightMode(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} />
       <CVModal open={cvOpen} onClose={() => setCvOpen(false)} />
       <RapportModal open={rapportOpen} onClose={() => setRapportOpen(false)} />
+      <VeilleModal open={veilleOpen} onClose={() => setVeilleOpen(false)} />
       <BreachModal open={breachOpen} onClose={() => setBreachOpen(false)} />
-      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} />}
+      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} />}
     </>
   );
 
@@ -2364,7 +2428,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Panel détail */}
-      <DetailPanel secIdx={panelSec} open={panelOpen} onClose={() => setPanelOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} />
+      <DetailPanel secIdx={panelSec} open={panelOpen} onClose={() => setPanelOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} />
 
       {/* CV modal */}
       <CVModal open={cvOpen} onClose={() => setCvOpen(false)} />
@@ -2372,11 +2436,14 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
       {/* Rapport modal */}
       <RapportModal open={rapportOpen} onClose={() => setRapportOpen(false)} />
 
+      {/* Veille modal */}
+      <VeilleModal open={veilleOpen} onClose={() => setVeilleOpen(false)} />
+
       {/* Breach easter egg */}
       <BreachModal open={breachOpen} onClose={() => setBreachOpen(false)} />
 
       {/* Terminal */}
-      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} />}
+      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} />}
 
     </div>
   );
