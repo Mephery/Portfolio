@@ -1256,7 +1256,7 @@ function SectionText({ section, sp, onOpen }: {
 // ─────────────────────────────────────────────────────────────────
 // MODE LÉGER : layout statique, pour les bébés machines
 // ─────────────────────────────────────────────────────────────────
-function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void; onOpenVeille: () => void; onOpenDat: () => void }) {
+function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat, onOpenCsna }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void; onOpenVeille: () => void; onOpenDat: () => void; onOpenCsna: () => void }) {
   const SEC_COLORS = ['#00b9ff','#3d7fff','#8c3cff','#ff3250','#ff6e28','#00c8b4','#b0d4ff'];
   const isMobile = useIsMobile();
   const btnBase: CSSProperties = { fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.45em', textTransform:'uppercase', padding:'0.32rem 0.8rem', cursor:'pointer', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,140,255,0.22)', color:'rgba(0,185,255,0.6)', transition:'all 0.22s' };
@@ -1320,7 +1320,7 @@ function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport, onOpenVeille, onO
                 letterSpacing:'0.4em', textTransform:'uppercase', marginBottom:'1.6rem', textShadow:`0 0 10px ${color}40` }}>{s.tagline}</p>
 
               <div style={{ borderTop:`1px solid ${color}18`, paddingTop:'1.6rem' }}>
-                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : i === 2 ? <PChaos onOpenDat={onOpenDat} /> : <PC />}
+                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : i === 4 ? <PExperience onOpenCsna={onOpenCsna} /> : i === 2 ? <PChaos onOpenDat={onOpenDat} /> : <PC />}
               </div>
             </section>
           );
@@ -1389,7 +1389,7 @@ function PSkills()     {
   const cols=[{l:'Développement',s:['Node.js','React','HTML/CSS/JS','Tailwind','WebRTC','Three.js','SQL','REST API','Git']},{l:'Infra & DevOps',s:['Proxmox','Docker','Linux','Windows Server','Active Directory','Cloud Microsoft','Nginx','Bash']},{l:'Sécurité',s:['Stormshield CSNA ★','Double Ratchet E2EE','XSS / SQLi','RGPD','Hash & chiffrement','Pare-feux réseau']}];
   return <div style={{display:'grid',gap:'1.5rem'}}>{cols.map(({l,s})=><div key={l}><p style={subLabel}>{l}</p><div>{s.map(x=><span key={x} style={tagStyle}>{x}</span>)}</div></div>)}</div>;
 }
-function PExperience() {
+function PExperience({ onOpenCsna }: { onOpenCsna?: () => void }) {
   const techno = ['Active Directory','Windows Server','Linux (Debian/Ubuntu)','Proxmox','HyperV','VMware','Stormshield','GLPI','Zabbix','Exchange / Office 365','Nextcloud','Bluemind','PXE / MDT'];
   const missions = [
     { label:'Migration parc W10 → W11',    desc:"Passage de l'intégralité du parc client sous Windows 11 : inventaire, tests de compatibilité, déploiement." },
@@ -1426,7 +1426,15 @@ function PExperience() {
         <p style={{...mono,fontSize:'0.58rem',color:'rgba(255,80,100,0.38)',letterSpacing:'0.5em',marginBottom:'0.3rem',textTransform:'uppercase'}}>2025</p>
         <p style={{fontWeight:600,color:'#ddeeff',marginBottom:'0.2rem'}}>Stormshield CSNA</p>
         <p style={{...mono,fontSize:'0.65rem',color:'rgba(255,80,100,0.52)',marginBottom:'0.6rem'}}>Certified Stormshield Network Administrator</p>
-        <p style={body}>Configuration, sécurisation et supervision de pare-feux Stormshield.</p>
+        <p style={{...body,marginBottom:onOpenCsna?'1.1rem':0}}>Configuration, sécurisation et supervision de pare-feux Stormshield.</p>
+        {onOpenCsna && (
+          <button onClick={onOpenCsna}
+            style={{display:'inline-block',...mono,fontSize:'0.62rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.55rem 1.25rem',cursor:'pointer',color:'rgba(255,130,145,0.9)',background:'rgba(22,0,8,0.45)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,80,100,0.3)',transition:'all 0.25s'}}
+            onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(255,80,100,0.7)',background:'rgba(40,0,12,0.7)',boxShadow:'0 0 18px rgba(255,60,90,0.25)'})}
+            onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,130,145,0.9)',borderColor:'rgba(255,80,100,0.3)',background:'rgba(22,0,8,0.45)',boxShadow:'none'})}>
+            ▸ VOIR LE DIPLÔME ↗
+          </button>
+        )}
       </div>
     </>
   );
@@ -1566,7 +1574,7 @@ function withAlpha(col: string, a: number): string {
   }
   return col;
 }
-function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat }: { secIdx:number; open:boolean; onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void; onOpenDat:()=>void }) {
+function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat, onOpenCsna }: { secIdx:number; open:boolean; onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void; onOpenDat:()=>void; onOpenCsna:()=>void }) {
   const s = SECTIONS[secIdx];
   const PC = PANELS[secIdx];
 
@@ -1705,7 +1713,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVei
               </p>
 
               <div style={{ borderTop:`1px dashed ${wa(0.15)}`, paddingTop:'2rem' }}>
-                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : secIdx === 2 ? <PChaos onOpenDat={onOpenDat} /> : <PC />}
+                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : secIdx === 4 ? <PExperience onOpenCsna={onOpenCsna} /> : secIdx === 2 ? <PChaos onOpenDat={onOpenDat} /> : <PC />}
               </div>
             </div>
           </div>
@@ -1733,7 +1741,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVei
 // ─────────────────────────────────────────────────────────────────
 // TERMINAL
 // ─────────────────────────────────────────────────────────────────
-function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'cv'|'rapport'|'veille'|'dat' } {
+function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'cv'|'rapport'|'veille'|'dat'|'csna' } {
   const parts = raw.trim().split(/\s+/);
   const cmd   = parts[0].toLowerCase();
   const arg   = parts[1] ?? '';
@@ -1745,6 +1753,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       '  cat rapport.txt   → rapport de fabrication',
       '  cat veille.txt    → veille technologique',
       '  cat dat.txt       → architecture Chaos (DAT)',
+      '  cat csna.txt      → diplôme Stormshield CSNA',
       '  cat about.txt     → à propos',
       '  cat chaos.txt     → projet Chaos',
       '  ping hc.fr        → infos alternance',
@@ -1762,7 +1771,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       'drwxr-xr-x  01_about/    02_company/    03_chaos/',
       'drwxr-xr-x  04_skills/   05_experience/ 06_school/',
       'drwxr-xr-x  07_contact/',
-      '-rw-r--r--  cv.txt   rapport.txt   veille.txt   dat.txt   about.txt   chaos.txt',
+      '-rw-r--r--  cv.txt   rapport.txt   veille.txt   dat.txt   csna.txt   about.txt   chaos.txt',
     ]};
     case 'cat':
       if (!arg)              return { lines: ['usage : cat <fichier>'] };
@@ -1770,6 +1779,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       if (arg==='rapport.txt')  return { lines: ['[Ouverture du rapport de fabrication…]'], action:'rapport' };
       if (arg==='veille.txt')   return { lines: ['[Ouverture de la veille technologique…]'], action:'veille' };
       if (arg==='dat.txt')      return { lines: ['[Ouverture du schéma d\'architecture (DAT)…]'], action:'dat' };
+      if (arg==='csna.txt')     return { lines: ['[Ouverture du diplôme Stormshield CSNA…]'], action:'csna' };
       if (arg==='about.txt') return { lines: [
         'Développeuse passionnée par le code, l\'infra et la sécurité.',
         'J\'aime construire des systèmes complets, du serveur au frontend.',
@@ -1812,11 +1822,11 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
 
 type TermLine = { type:'cmd'|'out'; text:string };
 
-const TERM_CMDS  = ['about.txt','breach','cat','chaos.txt','clear','cv.txt','dat.txt','exit','help','ls','ping','rapport.txt','veille.txt','whoami'];
-const CAT_FILES  = ['cv.txt','rapport.txt','veille.txt','dat.txt','about.txt','chaos.txt'];
+const TERM_CMDS  = ['about.txt','breach','cat','chaos.txt','clear','csna.txt','cv.txt','dat.txt','exit','help','ls','ping','rapport.txt','veille.txt','whoami'];
+const CAT_FILES  = ['cv.txt','rapport.txt','veille.txt','dat.txt','csna.txt','about.txt','chaos.txt'];
 const PING_HOSTS = ['hc.fr'];
 
-function Terminal({ onClose, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat }: { onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void; onOpenDat:()=>void }) {
+function Terminal({ onClose, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat, onOpenCsna }: { onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void; onOpenDat:()=>void; onOpenCsna:()=>void }) {
   const [history, setHistory] = useState<TermLine[]>([
     { type:'out', text:'╔══════════════════════════════════════════╗' },
     { type:'out', text:'║  CYBERSPACE TERMINAL  v1.0.0              ║' },
@@ -1848,6 +1858,7 @@ function Terminal({ onClose, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat }:
     if (action === 'rapport') setTimeout(onOpenRapport, 280);
     if (action === 'veille')  setTimeout(onOpenVeille,  280);
     if (action === 'dat')     setTimeout(onOpenDat,     280);
+    if (action === 'csna')    setTimeout(onOpenCsna,    280);
   };
 
   const onKD = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -2265,6 +2276,57 @@ function DatModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+function CsnaModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [imgError, setImgError] = useState(false);
+  useEscapeClose(open, onClose);
+  if (!open) return null;
+  return (
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:80, background:'rgba(0,1,5,0.65)', backdropFilter:'blur(8px)' }} />
+      <div style={{ position:'fixed', inset:0, zIndex:90, display:'flex', alignItems:'center', justifyContent:'center', padding:'1.5rem', pointerEvents:'none' }}>
+        <div style={{ pointerEvents:'auto', width:'100%', maxWidth:620, maxHeight:'90vh', display:'flex', flexDirection:'column',
+          background:'rgba(0,4,16,0.97)', border:'1px solid rgba(0,185,255,0.2)',
+          boxShadow:'0 0 60px rgba(0,185,255,0.1), 0 0 120px rgba(0,185,255,0.04)',
+          backdropFilter:'blur(24px)', position:'relative' }}>
+          {(['tl','tr','bl','br'] as const).map(p => <Corner key={p} p={p} />)}
+          <div style={{ padding:'1.5rem 2rem 1rem', borderBottom:'1px solid rgba(0,185,255,0.08)', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <p style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.7em', color:'rgba(0,185,255,0.35)', textTransform:'uppercase', marginBottom:'0.3rem' }}>DATA_STREAM // 11 ——</p>
+              <h2 style={{ fontSize:'1.2rem', fontWeight:700, color:'#ddeeff', letterSpacing:'-0.02em' }}>Certification Stormshield CSNA</h2>
+              <p style={{ ...mono, fontSize:'0.58rem', color:'rgba(0,185,255,0.4)', letterSpacing:'0.4em', textTransform:'uppercase', marginTop:'0.2rem' }}>Certified Stormshield Network Administrator</p>
+            </div>
+            <button onClick={onClose}
+              style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.35em', textTransform:'uppercase', padding:'0.3rem 0.7rem', cursor:'pointer', color:'rgba(0,185,255,0.55)', background:'rgba(0,12,32,0.6)', border:'1px solid rgba(0,185,255,0.2)', transition:'all 0.2s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,50,80,0.9)',borderColor:'rgba(255,30,60,0.4)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.55)',borderColor:'rgba(0,185,255,0.2)'})}>
+              ✕ FERMER
+            </button>
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem' }}>
+            {imgError ? (
+              <div style={{ textAlign:'center', padding:'4rem 2rem', color:'rgba(0,185,255,0.4)', fontFamily:'monospace', fontSize:'0.68rem', letterSpacing:'0.3em' }}>
+                [ Diplôme bientôt disponible ]
+              </div>
+            ) : (
+              <img src={`${import.meta.env.BASE_URL}csna.png`} alt="Diplôme Stormshield CSNA de Coline Derycke"
+                onError={() => setImgError(true)}
+                style={{ width:'100%', height:'auto', display:'block', border:'1px solid rgba(0,185,255,0.08)' }} />
+            )}
+          </div>
+          <div style={{ padding:'1rem 2rem 1.5rem', borderTop:'1px solid rgba(0,185,255,0.08)', display:'flex', justifyContent:'flex-end' }}>
+            <a href={`${import.meta.env.BASE_URL}csna.pdf`} download="Certification_CSNA_Coline_Derycke.pdf"
+              style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.4em', textTransform:'uppercase', padding:'0.5rem 1.2rem', color:'rgba(0,185,255,0.85)', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,140,255,0.28)', textDecoration:'none', transition:'all 0.25s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(0,185,255,0.6)',boxShadow:'0 0 18px rgba(0,185,255,0.2)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(0,185,255,0.85)',borderColor:'rgba(0,140,255,0.28)',boxShadow:'none'})}>
+              ↓ TÉLÉCHARGER PDF
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────
 // EXPORT
 // ─────────────────────────────────────────────────────────────────
@@ -2286,6 +2348,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
   const [rapportOpen, setRapportOpen] = useState(false);
   const [veilleOpen,  setVeilleOpen]  = useState(false);
   const [datOpen,     setDatOpen]     = useState(false);
+  const [csnaOpen,    setCsnaOpen]    = useState(false);
   const [breachOpen,  setBreachOpen]  = useState(false);
   const [termOpen,    setTermOpen]    = useState(false);
   const termOpenRef  = useRef(false);
@@ -2421,13 +2484,14 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
 
   if (lightMode) return (
     <>
-      <LightMode onBack={onBack} onHeavy={() => setLightMode(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} />
+      <LightMode onBack={onBack} onHeavy={() => setLightMode(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} onOpenCsna={() => setCsnaOpen(true)} />
       <CVModal open={cvOpen} onClose={() => setCvOpen(false)} />
       <RapportModal open={rapportOpen} onClose={() => setRapportOpen(false)} />
       <VeilleModal open={veilleOpen} onClose={() => setVeilleOpen(false)} />
       <DatModal open={datOpen} onClose={() => setDatOpen(false)} />
+      <CsnaModal open={csnaOpen} onClose={() => setCsnaOpen(false)} />
       <BreachModal open={breachOpen} onClose={() => setBreachOpen(false)} />
-      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} />}
+      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} onOpenCsna={() => setCsnaOpen(true)} />}
     </>
   );
 
@@ -2515,7 +2579,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Panel détail */}
-      <DetailPanel secIdx={panelSec} open={panelOpen} onClose={() => setPanelOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} />
+      <DetailPanel secIdx={panelSec} open={panelOpen} onClose={() => setPanelOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} onOpenCsna={() => setCsnaOpen(true)} />
 
       {/* CV modal */}
       <CVModal open={cvOpen} onClose={() => setCvOpen(false)} />
@@ -2529,11 +2593,14 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
       {/* DAT modal */}
       <DatModal open={datOpen} onClose={() => setDatOpen(false)} />
 
+      {/* CSNA modal */}
+      <CsnaModal open={csnaOpen} onClose={() => setCsnaOpen(false)} />
+
       {/* Breach easter egg */}
       <BreachModal open={breachOpen} onClose={() => setBreachOpen(false)} />
 
       {/* Terminal */}
-      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} />}
+      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} onOpenCsna={() => setCsnaOpen(true)} />}
 
     </div>
   );
