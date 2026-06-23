@@ -494,6 +494,16 @@ function useIsMobile() {
   return m;
 }
 
+// Ferme une modale quand on appuie sur Échap (accessibilité clavier)
+function useEscapeClose(open: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [open, onClose]);
+}
+
 // ─────────────────────────────────────────────────────────────────
 // DENSE FIELD - champ d'étoiles + morphing vers les shapes CP77
 // ─────────────────────────────────────────────────────────────────
@@ -1246,7 +1256,7 @@ function SectionText({ section, sp, onOpen }: {
 // ─────────────────────────────────────────────────────────────────
 // MODE LÉGER : layout statique, pour les bébés machines
 // ─────────────────────────────────────────────────────────────────
-function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport, onOpenVeille }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void; onOpenVeille: () => void }) {
+function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat }: { onBack?: () => void; onHeavy: () => void; onOpenCV: () => void; onOpenRapport: () => void; onOpenVeille: () => void; onOpenDat: () => void }) {
   const SEC_COLORS = ['#00b9ff','#3d7fff','#8c3cff','#ff3250','#ff6e28','#00c8b4','#b0d4ff'];
   const isMobile = useIsMobile();
   const btnBase: CSSProperties = { fontFamily:'monospace', fontSize:'0.52rem', letterSpacing:'0.45em', textTransform:'uppercase', padding:'0.32rem 0.8rem', cursor:'pointer', background:'rgba(0,8,22,0.7)', border:'1px solid rgba(0,140,255,0.22)', color:'rgba(0,185,255,0.6)', transition:'all 0.22s' };
@@ -1303,14 +1313,14 @@ function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport, onOpenVeille }: {
                 userSelect:'none', pointerEvents:'none', letterSpacing:'-0.05em' }}>{s.num}</div>
 
               <p style={{ fontFamily:'monospace', fontSize:'0.5rem', letterSpacing:'0.7em',
-                color:`${color}70`, marginBottom:'0.45rem', textTransform:'uppercase' }}>{s.num} ——</p>
+                color:`${color}70`, marginBottom:'0.45rem', textTransform:'uppercase', textShadow:`0 0 10px ${color}45` }}>{s.num} ——</p>
               <h2 style={{ fontSize:'clamp(1.3rem,2.5vw,1.9rem)', fontWeight:700, letterSpacing:'-0.02em',
-                color:'#ddeeff', marginBottom:'0.35rem', textShadow:`0 0 40px ${color}28` }}>{s.title}</h2>
+                color:'#ddeeff', marginBottom:'0.35rem', textShadow:`0 0 18px ${color}66, 0 0 44px ${color}22` }}>{s.title}</h2>
               <p style={{ fontFamily:'monospace', fontSize:'0.58rem', color:`${color}80`,
-                letterSpacing:'0.4em', textTransform:'uppercase', marginBottom:'1.6rem' }}>{s.tagline}</p>
+                letterSpacing:'0.4em', textTransform:'uppercase', marginBottom:'1.6rem', textShadow:`0 0 10px ${color}40` }}>{s.tagline}</p>
 
               <div style={{ borderTop:`1px solid ${color}18`, paddingTop:'1.6rem' }}>
-                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : <PC />}
+                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : i === 2 ? <PChaos onOpenDat={onOpenDat} /> : <PC />}
               </div>
             </section>
           );
@@ -1332,7 +1342,10 @@ function PAbout()      { return <><p style={{...body,marginBottom:'1.5rem'}}>J'a
 
 Pour moi, le code, l'infrastructure et la sécurité ne sont pas des cases étanches, c'est un seul et même terrain de jeu. J'adore concevoir des projets fullstack de la première à la dernière ligne de code, mais je trouve ça encore plus excitant de configurer le serveur Proxmox qui les héberge, de sécuriser le tunnel Tailscale qui les transporte et de surveiller mes conteneurs à distance.
 
-Mon parcours a commencé dans les lettres, à décortiquer la syntaxe et les structures des textes. Aujourd'hui, j'applique exactement la même curiosité et la même exigence à la logique binaire. En reconversion et actuellement en alternance, je passe mes journées (et pas mal de mes nuits) à apprendre, bidouiller et consolider mes compétences, avec une seule obsession : comprendre l'ensemble du système.</p><div>{['Node.js','React','Three.js','HTML/CSS/JS','Tailwind','Linux','Docker','Proxmox'].map(s=><span key={s} style={tagStyle}>{s}</span>)}</div></>; }
+Mon parcours a commencé dans les lettres, à décortiquer la syntaxe et les structures des textes. Aujourd'hui, j'applique exactement la même curiosité et la même exigence à la logique binaire. En reconversion et actuellement en alternance, je passe mes journées (et pas mal de mes nuits) à apprendre, bidouiller et consolider mes compétences, avec une seule obsession : comprendre l'ensemble du système.</p>
+  <p style={subLabel}>Projets d'avenir</p>
+  <p style={{...body,marginBottom:'1.5rem'}}>À l'issue du BTS SIO, je veux pousser plus loin sur l'ingénierie logicielle : concevoir des systèmes plus ambitieux, mieux architecturés, et continuer à relier le développement à l'infrastructure et à la sécurité. Mon objectif est d'intégrer une école d'ingénieur si ma candidature est retenue, pour transformer cette curiosité en véritable expertise.</p>
+  <div>{['Node.js','React','Three.js','HTML/CSS/JS','Tailwind','Linux','Docker','Proxmox'].map(s=><span key={s} style={tagStyle}>{s}</span>)}</div></>; }
 function PCompany()    {
   const t=['Gestion de parcs & Active Directory','Cloud Microsoft 365','Sécurité infrastructure, conformité RGPD','Stockage, sauvegarde, monitoring','Mises à jour serveurs, support N2/N3'];
   return <><p style={{...body,marginBottom:'1.5rem'}}>PME toulousaine · consulting IT, progiciels, développement web & logiciel, solutions d'infrastructure réseau sur mesure.</p>
@@ -1346,16 +1359,26 @@ function PCompany()    {
     {t.map(x=><div key={x} style={{display:'flex',gap:'0.8rem',marginBottom:'0.6rem',color:'rgba(200,220,255,0.65)',fontSize:'0.9rem'}}><span style={{color:'rgba(0,185,255,0.4)',flexShrink:0}}>▸</span>{x}</div>)}
   </>;
 }
-function PChaos()      {
+function PChaos({ onOpenDat }: { onOpenDat?: () => void }) {
   const s1=['Node.js','HTML/CSS/JS','WebRTC','PostgreSQL','Docker','Proxmox','Nginx','Double Ratchet','OAuth Google'];
   return <>
     <p style={{...body,marginBottom:'1.5rem'}}>Construit de bout en bout : infra Proxmox (2 LXC dev/prod) sur un serveur domestique, Docker Compose (Postgres + Nginx), jusqu'au frontend · Messagerie chiffrée de bout en bout (Double Ratchet) · WebRTC avec IA suppresseur de bruit · app de modération · protection failles XSS/SQLi · Authentification possible via Google.</p>
-    <a href="https://chaos.colinederycke-portfolio.com/" target="_blank" rel="noopener noreferrer"
-      style={{display:'inline-block',marginBottom:'2rem',...mono,fontSize:'0.62rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.55rem 1.25rem',cursor:'pointer',color:'rgba(255,130,145,0.9)',background:'rgba(22,0,8,0.7)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,60,80,0.3)',textDecoration:'none',transition:'all 0.25s'}}
-      onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(255,60,80,0.7)',background:'rgba(40,0,12,0.8)',boxShadow:'0 0 18px rgba(255,40,70,0.25)'})}
-      onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,130,145,0.9)',borderColor:'rgba(255,60,80,0.3)',background:'rgba(22,0,8,0.7)',boxShadow:'none'})}>
-      → OUVRIR CHAOS ↗
-    </a>
+    <div style={{display:'flex',flexWrap:'wrap',gap:'0.6rem',marginBottom:'2rem'}}>
+      <a href="https://chaos.colinederycke-portfolio.com/" target="_blank" rel="noopener noreferrer"
+        style={{display:'inline-block',...mono,fontSize:'0.62rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.55rem 1.25rem',cursor:'pointer',color:'rgba(255,130,145,0.9)',background:'rgba(22,0,8,0.7)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,60,80,0.3)',textDecoration:'none',transition:'all 0.25s'}}
+        onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(255,60,80,0.7)',background:'rgba(40,0,12,0.8)',boxShadow:'0 0 18px rgba(255,40,70,0.25)'})}
+        onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,130,145,0.9)',borderColor:'rgba(255,60,80,0.3)',background:'rgba(22,0,8,0.7)',boxShadow:'none'})}>
+        → OUVRIR CHAOS ↗
+      </a>
+      {onOpenDat && (
+        <button onClick={onOpenDat}
+          style={{display:'inline-block',...mono,fontSize:'0.62rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.55rem 1.25rem',cursor:'pointer',color:'rgba(255,130,145,0.9)',background:'rgba(22,0,8,0.45)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,60,80,0.3)',transition:'all 0.25s'}}
+          onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(255,60,80,0.7)',background:'rgba(40,0,12,0.8)',boxShadow:'0 0 18px rgba(255,40,70,0.25)'})}
+          onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,130,145,0.9)',borderColor:'rgba(255,60,80,0.3)',background:'rgba(22,0,8,0.45)',boxShadow:'none'})}>
+          ▸ ARCHITECTURE (DAT) ↗
+        </button>
+      )}
+    </div>
     <p style={subLabel}>Stack Chaos</p>
     <div style={{marginBottom:'1.5rem'}}>{s1.map(s=><span key={s} style={{...tagStyle,borderColor:'rgba(255,60,80,0.2)',color:'rgba(255,130,145,0.85)'}}>{s}</span>)}</div>
     <p style={subLabel}>Talos · supervision & admin</p>
@@ -1416,7 +1439,7 @@ function PSchool({ onOpenRapport, onOpenVeille }: { onOpenRapport?: () => void; 
       desc: "Reproduction fidèle de l'interface Netflix : hero animé, carousels de contenus, design responsive. Exercice de CSS avancé et manipulation du DOM.",
       img: `${import.meta.env.BASE_URL}projects/netflix-screenshot.png`,
       github: 'https://github.com/Mephery/Projet-Netflix',
-      live: 'https://projet-netflix-git-main-coline-ds-projects.vercel.app/',
+      live: 'https://projet-netflix-plum.vercel.app/',
     },
     {
       title: 'Pomodoro',
@@ -1424,7 +1447,7 @@ function PSchool({ onOpenRapport, onOpenVeille }: { onOpenRapport?: () => void; 
       desc: 'Timer Pomodoro avec cycles travail/pause configurables, notifications sonores et suivi de sessions. Interface soignée autour de la gestion du temps.',
       img: `${import.meta.env.BASE_URL}projects/pomodoro-screenshot.png`,
       github: 'https://github.com/Mephery/pomodoro',
-      live: 'https://pomodoro-git-main-coline-ds-projects.vercel.app/',
+      live: 'https://pomodoro-lac-nine.vercel.app/',
     },
     {
       title: 'Typing Speed Challenge',
@@ -1432,7 +1455,7 @@ function PSchool({ onOpenRapport, onOpenVeille }: { onOpenRapport?: () => void; 
       desc: "Test de vitesse de frappe avec statistiques en temps réel. Options au choix pour l'esthétique et la difficulté.",
       img: `${import.meta.env.BASE_URL}projects/Typing-speed-test-screenshot.png`,
       github: 'https://github.com/Mephery/typing-speed-test',
-      live: 'https://typing-speed-test-git-main-coline-ds-projects.vercel.app/',
+      live: 'https://typing-speed-test-ten-flame.vercel.app/',
     },
   ];
   const netItems = [
@@ -1543,7 +1566,7 @@ function withAlpha(col: string, a: number): string {
   }
   return col;
 }
-function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVeille }: { secIdx:number; open:boolean; onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void }) {
+function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat }: { secIdx:number; open:boolean; onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void; onOpenDat:()=>void }) {
   const s = SECTIONS[secIdx];
   const PC = PANELS[secIdx];
 
@@ -1671,18 +1694,18 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVei
                 </span>
               </div>
 
-              <p style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.7em', color: wa(0.42), marginBottom:'0.6rem', textTransform:'uppercase' }}>
+              <p style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.7em', color: wa(0.42), marginBottom:'0.6rem', textTransform:'uppercase', textShadow:`0 0 12px ${wa(0.5)}` }}>
                 DATA_STREAM // {s.num} ——
               </p>
-              <h2 style={{ fontSize:'clamp(1.6rem,3vw,2.4rem)', fontWeight:700, color:'#ddeeff', marginBottom:'0.5rem', lineHeight:1.1, letterSpacing:'-0.02em', textShadow:`0 0 30px ${wa(0.30)}` }}>
+              <h2 style={{ fontSize:'clamp(1.6rem,3vw,2.4rem)', fontWeight:700, color:'#ddeeff', marginBottom:'0.5rem', lineHeight:1.1, letterSpacing:'-0.02em', textShadow:`0 0 18px ${wa(0.6)}, 0 0 46px ${wa(0.24)}` }}>
                 {s.title}
               </h2>
-              <p style={{ ...mono, fontSize:'0.65rem', color:'rgba(0,185,255,0.45)', letterSpacing:'0.35em', marginBottom:'2.5rem', textTransform:'uppercase' }}>
+              <p style={{ ...mono, fontSize:'0.65rem', color:'rgba(0,185,255,0.45)', letterSpacing:'0.35em', marginBottom:'2.5rem', textTransform:'uppercase', textShadow:`0 0 11px ${wa(0.42)}` }}>
                 {s.tagline}
               </p>
 
               <div style={{ borderTop:`1px dashed ${wa(0.15)}`, paddingTop:'2rem' }}>
-                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : <PC />}
+                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : secIdx === 2 ? <PChaos onOpenDat={onOpenDat} /> : <PC />}
               </div>
             </div>
           </div>
@@ -1710,7 +1733,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVei
 // ─────────────────────────────────────────────────────────────────
 // TERMINAL
 // ─────────────────────────────────────────────────────────────────
-function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'cv'|'rapport'|'veille' } {
+function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'cv'|'rapport'|'veille'|'dat' } {
   const parts = raw.trim().split(/\s+/);
   const cmd   = parts[0].toLowerCase();
   const arg   = parts[1] ?? '';
@@ -1721,6 +1744,7 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       '  cat cv.txt        → ouvrir le CV',
       '  cat rapport.txt   → rapport de fabrication',
       '  cat veille.txt    → veille technologique',
+      '  cat dat.txt       → architecture Chaos (DAT)',
       '  cat about.txt     → à propos',
       '  cat chaos.txt     → projet Chaos',
       '  ping hc.fr        → infos alternance',
@@ -1738,13 +1762,14 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
       'drwxr-xr-x  01_about/    02_company/    03_chaos/',
       'drwxr-xr-x  04_skills/   05_experience/ 06_school/',
       'drwxr-xr-x  07_contact/',
-      '-rw-r--r--  cv.txt   rapport.txt   veille.txt   about.txt   chaos.txt',
+      '-rw-r--r--  cv.txt   rapport.txt   veille.txt   dat.txt   about.txt   chaos.txt',
     ]};
     case 'cat':
       if (!arg)              return { lines: ['usage : cat <fichier>'] };
       if (arg==='cv.txt')       return { lines: ['[Ouverture du CV…]'],                    action:'cv' };
       if (arg==='rapport.txt')  return { lines: ['[Ouverture du rapport de fabrication…]'], action:'rapport' };
       if (arg==='veille.txt')   return { lines: ['[Ouverture de la veille technologique…]'], action:'veille' };
+      if (arg==='dat.txt')      return { lines: ['[Ouverture du schéma d\'architecture (DAT)…]'], action:'dat' };
       if (arg==='about.txt') return { lines: [
         'Développeuse passionnée par le code, l\'infra et la sécurité.',
         'J\'aime construire des systèmes complets, du serveur au frontend.',
@@ -1787,11 +1812,11 @@ function processCmd(raw: string): { lines: string[]; action?: 'clear'|'close'|'c
 
 type TermLine = { type:'cmd'|'out'; text:string };
 
-const TERM_CMDS  = ['about.txt','breach','cat','chaos.txt','clear','cv.txt','exit','help','ls','ping','rapport.txt','veille.txt','whoami'];
-const CAT_FILES  = ['cv.txt','rapport.txt','veille.txt','about.txt','chaos.txt'];
+const TERM_CMDS  = ['about.txt','breach','cat','chaos.txt','clear','cv.txt','dat.txt','exit','help','ls','ping','rapport.txt','veille.txt','whoami'];
+const CAT_FILES  = ['cv.txt','rapport.txt','veille.txt','dat.txt','about.txt','chaos.txt'];
 const PING_HOSTS = ['hc.fr'];
 
-function Terminal({ onClose, onOpenCV, onOpenRapport, onOpenVeille }: { onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void }) {
+function Terminal({ onClose, onOpenCV, onOpenRapport, onOpenVeille, onOpenDat }: { onClose:()=>void; onOpenCV:()=>void; onOpenRapport:()=>void; onOpenVeille:()=>void; onOpenDat:()=>void }) {
   const [history, setHistory] = useState<TermLine[]>([
     { type:'out', text:'╔══════════════════════════════════════════╗' },
     { type:'out', text:'║  CYBERSPACE TERMINAL  v1.0.0              ║' },
@@ -1822,6 +1847,7 @@ function Terminal({ onClose, onOpenCV, onOpenRapport, onOpenVeille }: { onClose:
     if (action === 'cv')      setTimeout(onOpenCV,      280);
     if (action === 'rapport') setTimeout(onOpenRapport, 280);
     if (action === 'veille')  setTimeout(onOpenVeille,  280);
+    if (action === 'dat')     setTimeout(onOpenDat,     280);
   };
 
   const onKD = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1910,6 +1936,7 @@ function Terminal({ onClose, onOpenCV, onOpenRapport, onOpenVeille }: { onClose:
 // ─────────────────────────────────────────────────────────────────
 function CVModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [imgError, setImgError] = useState(false);
+  useEscapeClose(open, onClose);
   if (!open) return null;
   return (
     <>
@@ -2087,6 +2114,7 @@ function BreachModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
 function RapportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [imgError, setImgError] = useState(false);
+  useEscapeClose(open, onClose);
   if (!open) return null;
   return (
     <>
@@ -2137,6 +2165,7 @@ function RapportModal({ open, onClose }: { open: boolean; onClose: () => void })
 
 function VeilleModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [imgError, setImgError] = useState(false);
+  useEscapeClose(open, onClose);
   if (!open) return null;
   return (
     <>
@@ -2185,6 +2214,57 @@ function VeilleModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   );
 }
 
+function DatModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [imgError, setImgError] = useState(false);
+  useEscapeClose(open, onClose);
+  if (!open) return null;
+  return (
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:80, background:'rgba(0,1,5,0.65)', backdropFilter:'blur(8px)' }} />
+      <div style={{ position:'fixed', inset:0, zIndex:90, display:'flex', alignItems:'center', justifyContent:'center', padding:'1.5rem', pointerEvents:'none' }}>
+        <div style={{ pointerEvents:'auto', width:'100%', maxWidth:620, maxHeight:'90vh', display:'flex', flexDirection:'column',
+          background:'rgba(0,4,16,0.97)', border:'1px solid rgba(255,60,80,0.2)',
+          boxShadow:'0 0 60px rgba(255,40,70,0.08), 0 0 120px rgba(255,40,70,0.03)',
+          backdropFilter:'blur(24px)', position:'relative' }}>
+          {(['tl','tr','bl','br'] as const).map(p => <Corner key={p} p={p} />)}
+          <div style={{ padding:'1.5rem 2rem 1rem', borderBottom:'1px solid rgba(255,60,80,0.08)', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <p style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.7em', color:'rgba(255,130,145,0.35)', textTransform:'uppercase', marginBottom:'0.3rem' }}>DATA_STREAM // 10 ——</p>
+              <h2 style={{ fontSize:'1.2rem', fontWeight:700, color:'#ddeeff', letterSpacing:'-0.02em' }}>Architecture · DAT</h2>
+              <p style={{ ...mono, fontSize:'0.58rem', color:'rgba(255,130,145,0.4)', letterSpacing:'0.4em', textTransform:'uppercase', marginTop:'0.2rem' }}>Projet Chaos</p>
+            </div>
+            <button onClick={onClose}
+              style={{ ...mono, fontSize:'0.5rem', letterSpacing:'0.35em', textTransform:'uppercase', padding:'0.3rem 0.7rem', cursor:'pointer', color:'rgba(255,130,145,0.55)', background:'rgba(0,12,32,0.6)', border:'1px solid rgba(255,60,80,0.2)', transition:'all 0.2s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,50,80,0.9)',borderColor:'rgba(255,30,60,0.4)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,130,145,0.55)',borderColor:'rgba(255,60,80,0.2)'})}>
+              ✕ FERMER
+            </button>
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem' }}>
+            {imgError ? (
+              <div style={{ textAlign:'center', padding:'4rem 2rem', color:'rgba(255,130,145,0.4)', fontFamily:'monospace', fontSize:'0.68rem', letterSpacing:'0.3em' }}>
+                [ Schéma bientôt disponible ]
+              </div>
+            ) : (
+              <img src={`${import.meta.env.BASE_URL}dat.png`} alt="Dossier d'architecture technique du projet Chaos"
+                onError={() => setImgError(true)}
+                style={{ width:'100%', height:'auto', display:'block', border:'1px solid rgba(255,60,80,0.08)' }} />
+            )}
+          </div>
+          <div style={{ padding:'1rem 2rem 1.5rem', borderTop:'1px solid rgba(255,60,80,0.08)', display:'flex', justifyContent:'flex-end' }}>
+            <a href={`${import.meta.env.BASE_URL}dat.png`} download="DAT_Chaos_Coline_Derycke.png"
+              style={{ ...mono, fontSize:'0.58rem', letterSpacing:'0.4em', textTransform:'uppercase', padding:'0.5rem 1.2rem', color:'rgba(255,130,145,0.85)', background:'rgba(22,0,8,0.7)', border:'1px solid rgba(255,60,80,0.28)', textDecoration:'none', transition:'all 0.25s' }}
+              onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(255,60,80,0.6)',boxShadow:'0 0 18px rgba(255,40,70,0.2)'})}
+              onMouseLeave={e=>Object.assign(e.currentTarget.style,{color:'rgba(255,130,145,0.85)',borderColor:'rgba(255,60,80,0.28)',boxShadow:'none'})}>
+              ↓ TÉLÉCHARGER PNG
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────
 // EXPORT
 // ─────────────────────────────────────────────────────────────────
@@ -2205,13 +2285,16 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
   const [cvOpen,      setCvOpen]      = useState(false);
   const [rapportOpen, setRapportOpen] = useState(false);
   const [veilleOpen,  setVeilleOpen]  = useState(false);
+  const [datOpen,     setDatOpen]     = useState(false);
   const [breachOpen,  setBreachOpen]  = useState(false);
   const [termOpen,    setTermOpen]    = useState(false);
   const termOpenRef  = useRef(false);
   const panelOpenRef = useRef(false);
+  const lightModeRef = useRef(false);
   const konamiIdxRef = useRef(0);
   useEffect(() => { termOpenRef.current  = termOpen;  }, [termOpen]);
   useEffect(() => { panelOpenRef.current = panelOpen; }, [panelOpen]);
+  useEffect(() => { lightModeRef.current = lightMode; }, [lightMode]);
 
   const scrollToSection = useCallback((i: number) => {
     // +0.5 = atterrir au milieu : texte pleinement visible (fade-in terminé à sp>0.16)
@@ -2253,6 +2336,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
 
     // Scroll natif → aligne targetProg (touch : source principale ; desktop : scrollbar/clavier)
     const onScroll = () => {
+      if (lightModeRef.current) return; // version lite : scroll natif, pas de scroll-jacking
       const prog = getNativeProg();
       targetProgRef.current = prog;
       if (isTouch) { virtualProgRef.current = prog; applyProg(prog); }
@@ -2260,6 +2344,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
 
     // Desktop : intercepte la molette → virtual scroll (touch génère touchmove, pas wheel)
     const onWheel = (e: WheelEvent) => {
+      if (lightModeRef.current) return; // version lite : laisse la molette scroller la page nativement
       if (isTouch) return;
       if (panelOpenRef.current) return; // laisse le panneau gérer son propre scroll
       e.preventDefault();
@@ -2314,6 +2399,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
       }
       if (termOpenRef.current) return;
       if (panelOpenRef.current) { if (e.key === 'Escape') setPanelOpen(false); return; }
+      if (lightModeRef.current) return; // version lite : flèches = scroll natif du navigateur
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); scrollToSection(Math.min(N_SEC-1, scrollRef.current.section + 1)); }
       if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  { e.preventDefault(); scrollToSection(Math.max(0,          scrollRef.current.section - 1)); }
     };
@@ -2335,12 +2421,13 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
 
   if (lightMode) return (
     <>
-      <LightMode onBack={onBack} onHeavy={() => setLightMode(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} />
+      <LightMode onBack={onBack} onHeavy={() => setLightMode(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} />
       <CVModal open={cvOpen} onClose={() => setCvOpen(false)} />
       <RapportModal open={rapportOpen} onClose={() => setRapportOpen(false)} />
       <VeilleModal open={veilleOpen} onClose={() => setVeilleOpen(false)} />
+      <DatModal open={datOpen} onClose={() => setDatOpen(false)} />
       <BreachModal open={breachOpen} onClose={() => setBreachOpen(false)} />
-      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} />}
+      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} />}
     </>
   );
 
@@ -2428,7 +2515,7 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Panel détail */}
-      <DetailPanel secIdx={panelSec} open={panelOpen} onClose={() => setPanelOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} />
+      <DetailPanel secIdx={panelSec} open={panelOpen} onClose={() => setPanelOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} />
 
       {/* CV modal */}
       <CVModal open={cvOpen} onClose={() => setCvOpen(false)} />
@@ -2439,11 +2526,14 @@ export default function PortfolioMain({ onBack }: { onBack?: () => void }) {
       {/* Veille modal */}
       <VeilleModal open={veilleOpen} onClose={() => setVeilleOpen(false)} />
 
+      {/* DAT modal */}
+      <DatModal open={datOpen} onClose={() => setDatOpen(false)} />
+
       {/* Breach easter egg */}
       <BreachModal open={breachOpen} onClose={() => setBreachOpen(false)} />
 
       {/* Terminal */}
-      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} />}
+      {termOpen && <Terminal onClose={() => setTermOpen(false)} onOpenCV={() => setCvOpen(true)} onOpenRapport={() => setRapportOpen(true)} onOpenVeille={() => setVeilleOpen(true)} onOpenDat={() => setDatOpen(true)} />}
 
     </div>
   );

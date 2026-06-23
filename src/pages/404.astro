@@ -1,0 +1,48 @@
+---
+import '../styles/global.css';
+---
+
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/png" href={`${import.meta.env.BASE_URL}favicon.png`} />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="robots" content="noindex" />
+		<title>404 — Signal perdu · Coline Derycke</title>
+	</head>
+	<body style="margin:0;padding:0;min-height:100vh;background:#000814;color:#ddeeff;font-family:monospace;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+		<!-- Scanlines CRT -->
+		<div style="position:fixed;inset:0;pointer-events:none;z-index:1;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,185,255,0.02) 3px,rgba(0,185,255,0.02) 4px);"></div>
+
+		<!-- Coins HUD -->
+		<div style="position:fixed;top:24px;left:24px;width:32px;height:32px;border-top:2px solid rgba(0,185,255,0.35);border-left:2px solid rgba(0,185,255,0.35);"></div>
+		<div style="position:fixed;top:24px;right:24px;width:32px;height:32px;border-top:2px solid rgba(0,185,255,0.35);border-right:2px solid rgba(0,185,255,0.35);"></div>
+		<div style="position:fixed;bottom:24px;left:24px;width:32px;height:32px;border-bottom:2px solid rgba(0,185,255,0.35);border-left:2px solid rgba(0,185,255,0.35);"></div>
+		<div style="position:fixed;bottom:24px;right:24px;width:32px;height:32px;border-bottom:2px solid rgba(0,185,255,0.35);border-right:2px solid rgba(0,185,255,0.35);"></div>
+
+		<main style="position:relative;z-index:2;text-align:center;padding:2rem;max-width:560px;">
+			<p style="font-size:0.5rem;letter-spacing:0.9em;color:rgba(255,30,55,0.55);text-transform:uppercase;margin-bottom:1rem;">[ ICE // CONNEXION ROMPUE ]</p>
+			<h1 class="glitch" style="font-size:clamp(4rem,18vw,9rem);font-weight:900;letter-spacing:0.05em;line-height:1;margin:0 0 0.5rem;color:#ddeeff;text-shadow:0 0 30px rgba(0,185,255,0.5),0 0 80px rgba(0,185,255,0.2);">404</h1>
+			<p style="font-size:0.62rem;letter-spacing:0.55em;color:rgba(0,185,255,0.7);text-transform:uppercase;margin-bottom:2rem;">Signal perdu · ce node n'existe pas</p>
+			<p style="font-size:0.9rem;line-height:1.8;color:rgba(200,220,255,0.55);margin-bottom:2.5rem;">
+				Tu as suivi une route qui mène nulle part dans le cyberspace.<br/>Reconnecte-toi au réseau principal.
+			</p>
+			<a href={import.meta.env.BASE_URL}
+				style="display:inline-block;font-size:0.6rem;letter-spacing:0.4em;text-transform:uppercase;padding:0.65rem 1.5rem;color:rgba(0,185,255,0.9);background:rgba(0,8,22,0.7);border:1px solid rgba(0,140,255,0.35);text-decoration:none;transition:all 0.25s;"
+				onmouseenter="this.style.color='#fff';this.style.borderColor='rgba(0,185,255,0.7)';this.style.boxShadow='0 0 20px rgba(0,185,255,0.25)';"
+				onmouseleave="this.style.color='rgba(0,185,255,0.9)';this.style.borderColor='rgba(0,140,255,0.35)';this.style.boxShadow='none';">
+				← RETOUR À L'ACCUEIL
+			</a>
+		</main>
+
+		<style>
+			@keyframes glitchShift {
+				0%, 92%, 100% { transform: translate(0,0); filter: none; }
+				93% { transform: translate(-2px,1px); filter: drop-shadow(2px 0 rgba(255,30,55,0.6)) drop-shadow(-2px 0 rgba(0,185,255,0.6)); }
+				95% { transform: translate(2px,-1px); filter: drop-shadow(-2px 0 rgba(255,30,55,0.6)) drop-shadow(2px 0 rgba(0,185,255,0.6)); }
+				97% { transform: translate(-1px,0); filter: none; }
+			}
+			.glitch { animation: glitchShift 4s steps(1) infinite; }
+		</style>
+	</body>
+</html>
