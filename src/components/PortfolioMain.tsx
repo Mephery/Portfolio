@@ -1347,8 +1347,8 @@ Mon parcours a commencé dans les lettres, à décortiquer la syntaxe et les str
   <p style={{...body,marginBottom:'1.5rem'}}>À l'issue du BTS SIO, je veux pousser plus loin sur l'ingénierie logicielle : concevoir des systèmes plus ambitieux, mieux architecturés, et continuer à relier le développement à l'infrastructure et à la sécurité. Mon objectif est d'intégrer une école d'ingénieur si ma candidature est retenue, pour transformer cette curiosité en véritable expertise.</p>
   <div>{['Node.js','React','Three.js','HTML/CSS/JS','Tailwind','Linux','Docker','Proxmox'].map(s=><span key={s} style={tagStyle}>{s}</span>)}</div></>; }
 function PCompany()    {
-  const t=['Gestion de parcs & Active Directory','Cloud Microsoft 365','Sécurité infrastructure, conformité RGPD','Stockage, sauvegarde, monitoring','Mises à jour serveurs, support N2/N3'];
-  return <><p style={{...body,marginBottom:'1.5rem'}}>PME toulousaine · consulting IT, progiciels, développement web & logiciel, solutions d'infrastructure réseau sur mesure.</p>
+  const t=['Gestion de parcs & Active Directory','Cloud Microsoft 365','Sécurité des infrastructures', 'Conformité RGPD','Stockage, sauvegarde, monitoring','Mises à jour de serveurs Windows / Linux', 'Support N1/N2/N3'];
+  return <><p style={{...body,marginBottom:'1.5rem'}}>PME toulousaine · Infogérance, consulting IT, progiciels, développement web & logiciel, solutions d'infrastructure réseau sur mesure.</p>
     <a href="https://www.humansconnexion.com/" target="_blank" rel="noopener noreferrer"
       style={{display:'inline-block',marginBottom:'2rem',...mono,fontSize:'0.62rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.55rem 1.25rem',cursor:'pointer',color:'rgba(61,127,255,0.9)',background:'rgba(0,8,30,0.7)',backdropFilter:'blur(8px)',border:'1px solid rgba(61,127,255,0.3)',textDecoration:'none',transition:'all 0.25s'}}
       onMouseEnter={e=>Object.assign(e.currentTarget.style,{color:'#fff',borderColor:'rgba(61,127,255,0.7)',background:'rgba(0,12,40,0.8)',boxShadow:'0 0 18px rgba(61,127,255,0.25)'})}
@@ -1361,8 +1361,23 @@ function PCompany()    {
 }
 function PChaos({ onOpenDat }: { onOpenDat?: () => void }) {
   const s1=['Node.js','HTML/CSS/JS','WebRTC','PostgreSQL','Docker','Proxmox','Nginx','Double Ratchet','OAuth Google'];
+  const feats=[
+    ['Chiffrement E2E','Messagerie privée chiffrée de bout en bout (Double Ratchet) et création de serveurs communautaires possible.'],
+    ['Temps réel','Audio & streaming vidéo en WebRTC, avec une IA suppresseur de bruit.'],
+    ['Modération','Application dédiée de supervision et d’administration : Talos.'],
+    ['Sécurité','Protection contre les failles XSS et les injections SQL.'],
+    ['Intégrations','Authentification via Google et connexion Spotify pour les partages d’écoute.'],
+  ];
   return <>
-    <p style={{...body,marginBottom:'1.5rem'}}>Construit de bout en bout : infra Proxmox (2 LXC dev/prod) sur un serveur domestique, Docker Compose (Postgres + Nginx), jusqu'au frontend · Messagerie chiffrée de bout en bout (Double Ratchet) · WebRTC avec IA suppresseur de bruit · app de modération · protection failles XSS/SQLi · Authentification possible via Google.</p>
+    <p style={{...body,marginBottom:'1.5rem'}}>Application communautaire construite <span style={{color:'rgba(255,130,145,0.95)'}}>« from scratch »</span>, du backend au frontend. Infra auto-hébergée sur un serveur domestique : Proxmox (2 LXC dev/prod) et Docker Compose (Postgres + Nginx).</p>
+    <div style={{marginBottom:'2rem'}}>
+      {feats.map(([k,d])=>(
+        <div key={k} style={{display:'flex',gap:'0.8rem',marginBottom:'0.7rem',color:'rgba(200,220,255,0.65)',fontSize:'0.9rem',lineHeight:1.5}}>
+          <span style={{color:'rgba(255,60,80,0.55)',flexShrink:0}}>▸</span>
+          <span><span style={{color:'rgba(255,150,165,0.95)',fontWeight:600}}>{k} · </span>{d}</span>
+        </div>
+      ))}
+    </div>
     <div style={{display:'flex',flexWrap:'wrap',gap:'0.6rem',marginBottom:'2rem'}}>
       <a href="https://chaos.colinederycke-portfolio.com/" target="_blank" rel="noopener noreferrer"
         style={{display:'inline-block',...mono,fontSize:'0.62rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.55rem 1.25rem',cursor:'pointer',color:'rgba(255,130,145,0.9)',background:'rgba(22,0,8,0.7)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,60,80,0.3)',textDecoration:'none',transition:'all 0.25s'}}
@@ -1630,7 +1645,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVei
       }}>
 
         {/* Zone principale : référent pour les éléments absolus */}
-        <div style={{ flex:1, position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        <div style={{ flex:1, position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', paddingBottom: isMobile ? '1.75rem' : '2.5rem' }}>
 
           {/* Scan line horizontale : une seule fois à l'ouverture */}
           {open && (
