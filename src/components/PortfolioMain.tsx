@@ -11,7 +11,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 const SECTIONS = [
   { id:'about',      num:'01', title:'Coline Derycke',    tagline:'Développeuse · BTS SIO · Alternance',   cta:'À propos'           },
   { id:'company',    num:'02', title:"Human's Connexion", tagline:'Toulouse · Consulting IT & Infogérance', cta:"L'entreprise"       },
-  { id:'chaos',      num:'03', title:'Chaos',             tagline:'Chat communautaire · Full-stack',        cta:'Explorer le projet'  },
+  { id:'projets',    num:'03', title:'Projets perso',     tagline:'Chaos · Osiris · Orpheus',               cta:'Explorer les projets' },
   { id:'skills',     num:'04', title:'Compétences',       tagline:'Dev · Infra · Sécurité',                 cta:'Voir le stack'      },
   { id:'experience', num:'05', title:'Expérience',        tagline:"Human's Connexion · CSNA Stormshield",  cta:'Mon parcours'       },
   { id:'school',     num:'06', title:'BTS SIO',           tagline:'Projets & formation',                    cta:'Les projets'        },
@@ -1320,7 +1320,7 @@ function LightMode({ onBack, onHeavy, onOpenCV, onOpenRapport, onOpenVeille, onO
                 letterSpacing:'0.4em', textTransform:'uppercase', marginBottom:'1.6rem', textShadow:`0 0 10px ${color}40` }}>{s.tagline}</p>
 
               <div style={{ borderTop:`1px solid ${color}18`, paddingTop:'1.6rem' }}>
-                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : i === 4 ? <PExperience onOpenCsna={onOpenCsna} /> : i === 2 ? <PChaos onOpenDat={onOpenDat} /> : <PC />}
+                {i === 6 ? <PContact onOpenCV={onOpenCV} /> : i === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : i === 4 ? <PExperience onOpenCsna={onOpenCsna} /> : i === 2 ? <PProjets onOpenDat={onOpenDat} /> : <PC />}
               </div>
             </section>
           );
@@ -1357,26 +1357,42 @@ function PCompany()    {
     </a>
     <p style={{...subLabel,marginBottom:'1rem'}}>Mon rôle · Technicienne systèmes & réseaux</p>
     {t.map(x=><div key={x} style={{display:'flex',gap:'0.8rem',marginBottom:'0.6rem',color:'rgba(200,220,255,0.65)',fontSize:'0.9rem'}}><span style={{color:'rgba(0,185,255,0.4)',flexShrink:0}}>▸</span>{x}</div>)}
+    <p style={{...subLabel,margin:'2rem 0 0.9rem'}}>Développement interne · Horus</p>
+    <p style={{...body,marginBottom:'1.2rem'}}>CVE catcher que je développe pour l’entreprise : un outil de veille qui traque les vulnérabilités (CVE) touchant les technologies de nos clients et les remonte aux équipes.</p>
+    <div>{['Python','React'].map(s=><span key={s} style={{...tagStyle,borderColor:'rgba(61,127,255,0.3)',color:'rgba(130,170,255,0.9)'}}>{s}</span>)}</div>
   </>;
 }
-function PChaos({ onOpenDat }: { onOpenDat?: () => void }) {
+function PProjets({ onOpenDat }: { onOpenDat?: () => void }) {
   const s1=['Node.js','HTML/CSS/JS','WebRTC','PostgreSQL','Docker','Proxmox','Nginx','Double Ratchet','OAuth Google'];
-  const feats=[
+  const chaosFeats=[
     ['Chiffrement E2E','Messagerie privée chiffrée de bout en bout (Double Ratchet) et création de serveurs communautaires possible.'],
     ['Temps réel','Audio & streaming vidéo en WebRTC, avec une IA suppresseur de bruit.'],
     ['Modération','Application dédiée de supervision et d’administration : Talos.'],
     ['Sécurité','Protection contre les failles XSS et les injections SQL.'],
     ['Intégrations','Authentification via Google et connexion Spotify pour les partages d’écoute.'],
   ];
+  const osirisFeats=[
+    ['Boot PXE','Démarrage réseau des machines, physiques ou virtuelles, sans clé USB ni média d’installation.'],
+    ['Images','Déploiement de n’importe quelle image système, du poste de travail au serveur.'],
+    ['Jonction AD','Intégration automatique des machines déployées au domaine Active Directory.'],
+    ['Applications','Installation logicielle automatisée via winget en fin de déploiement.'],
+  ];
+  const featRow = ([k,d]:string[], arrow:string, label:string) => (
+    <div key={k} style={{display:'flex',gap:'0.8rem',marginBottom:'0.7rem',color:'rgba(200,220,255,0.65)',fontSize:'0.9rem',lineHeight:1.5}}>
+      <span style={{color:arrow,flexShrink:0}}>▸</span>
+      <span><span style={{color:label,fontWeight:600}}>{k} · </span>{d}</span>
+    </div>
+  );
+  const projLabel = (c:string): CSSProperties => ({ ...mono, fontSize:'0.52rem', letterSpacing:'0.6em', color:c, textTransform:'uppercase', marginBottom:'0.35rem' });
+  const projTitle: CSSProperties = { fontSize:'1.25rem', fontWeight:700, color:'#ddeeff', letterSpacing:'-0.01em', marginBottom:'0.9rem' };
+  const divider: CSSProperties = { borderTop:'1px dashed rgba(0,140,255,0.18)', margin:'2.4rem 0 1.9rem' };
   return <>
+    {/* ── 01 · CHAOS & TALOS — projet vedette ─────────────────── */}
+    <p style={projLabel('rgba(255,130,145,0.5)')}>Projet 01 — vedette</p>
+    <h3 style={projTitle}>Chaos <span style={{color:'rgba(200,220,255,0.35)',fontWeight:400}}>&</span> Talos</h3>
     <p style={{...body,marginBottom:'1.5rem'}}>Application communautaire construite <span style={{color:'rgba(255,130,145,0.95)'}}>« from scratch »</span>, du backend au frontend. Infra auto-hébergée sur un serveur domestique : Proxmox (2 LXC dev/prod) et Docker Compose (Postgres + Nginx).</p>
     <div style={{marginBottom:'2rem'}}>
-      {feats.map(([k,d])=>(
-        <div key={k} style={{display:'flex',gap:'0.8rem',marginBottom:'0.7rem',color:'rgba(200,220,255,0.65)',fontSize:'0.9rem',lineHeight:1.5}}>
-          <span style={{color:'rgba(255,60,80,0.55)',flexShrink:0}}>▸</span>
-          <span><span style={{color:'rgba(255,150,165,0.95)',fontWeight:600}}>{k} · </span>{d}</span>
-        </div>
-      ))}
+      {chaosFeats.map(f=>featRow(f,'rgba(255,60,80,0.55)','rgba(255,150,165,0.95)'))}
     </div>
     <div style={{display:'flex',flexWrap:'wrap',gap:'0.6rem',marginBottom:'2rem'}}>
       <a href="https://chaos.colinederycke-portfolio.com/" target="_blank" rel="noopener noreferrer"
@@ -1398,6 +1414,24 @@ function PChaos({ onOpenDat }: { onOpenDat?: () => void }) {
     <div style={{marginBottom:'1.5rem'}}>{s1.map(s=><span key={s} style={{...tagStyle,borderColor:'rgba(255,60,80,0.2)',color:'rgba(255,130,145,0.85)'}}>{s}</span>)}</div>
     <p style={subLabel}>Talos · supervision & admin</p>
     <div>{['React','Tailwind','Node.js'].map(s=><span key={s} style={tagStyle}>{s}</span>)}</div>
+
+    {/* ── 02 · OSIRIS ─────────────────────────────────────────── */}
+    <div style={divider} />
+    <p style={projLabel('rgba(0,200,180,0.5)')}>Projet 02</p>
+    <h3 style={projTitle}>Osiris</h3>
+    <p style={{...body,marginBottom:'1.5rem'}}>Successeur spirituel de <span style={{color:'rgba(120,235,220,0.95)'}}>MDT</span> (Microsoft Deployment Toolkit) : une solution de déploiement de PC et de serveurs, de la première trame réseau au poste prêt à l’emploi.</p>
+    <div style={{marginBottom:'1.5rem'}}>
+      {osirisFeats.map(f=>featRow(f,'rgba(0,200,180,0.55)','rgba(120,235,220,0.95)'))}
+    </div>
+    <div>{['PXE','Windows','Active Directory','Winget','Déploiement d’images'].map(s=><span key={s} style={{...tagStyle,borderColor:'rgba(0,200,180,0.2)',color:'rgba(120,235,220,0.85)'}}>{s}</span>)}</div>
+
+    {/* ── 03 · ORPHEUS — en cours de dev ──────────────────────── */}
+    <div style={divider} />
+    <p style={projLabel('rgba(190,140,255,0.5)')}>Projet 03</p>
+    <h3 style={{...projTitle,marginBottom:'0.9rem'}}>Orpheus
+      <span style={{...mono,fontSize:'0.5rem',letterSpacing:'0.35em',textTransform:'uppercase',padding:'0.22rem 0.6rem',border:'1px solid rgba(140,60,255,0.4)',color:'rgba(190,140,255,0.9)',verticalAlign:'middle',marginLeft:'0.8rem'}}>En dev</span>
+    </h3>
+    <p style={body}>Sniffeur réseau qui transforme le trafic en musique : chaque paquet capturé devient une note, et le réseau compose sa propre partition en temps réel.</p>
   </>;
 }
 function PSkills()     {
@@ -1569,7 +1603,7 @@ function PContact({ onOpenCV }: { onOpenCV?: () => void }) {
   </>;
 }
 
-const PANELS = [PAbout, PCompany, PChaos, PSkills, PExperience, PSchool, PContact];
+const PANELS = [PAbout, PCompany, PProjets, PSkills, PExperience, PSchool, PContact];
 
 // ─────────────────────────────────────────────────────────────────
 // DETAIL PANEL : slide depuis la droite
@@ -1728,7 +1762,7 @@ function DetailPanel({ secIdx, open, onClose, onOpenCV, onOpenRapport, onOpenVei
               </p>
 
               <div style={{ borderTop:`1px dashed ${wa(0.15)}`, paddingTop:'2rem' }}>
-                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : secIdx === 4 ? <PExperience onOpenCsna={onOpenCsna} /> : secIdx === 2 ? <PChaos onOpenDat={onOpenDat} /> : <PC />}
+                {secIdx === 6 ? <PContact onOpenCV={onOpenCV} /> : secIdx === 5 ? <PSchool onOpenRapport={onOpenRapport} onOpenVeille={onOpenVeille} /> : secIdx === 4 ? <PExperience onOpenCsna={onOpenCsna} /> : secIdx === 2 ? <PProjets onOpenDat={onOpenDat} /> : <PC />}
               </div>
             </div>
           </div>
